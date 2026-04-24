@@ -23,13 +23,16 @@
 
   # Content Security Policy — locks down what the page can load.
   # - default-src 'self': only our own origin
-  # - style-src 'self' 'unsafe-inline': we use inline <style> in index.html
+  # - script-src 'self': no inline scripts; all JS in product/web/app.js
+  # - style-src 'self' 'unsafe-inline' fonts.googleapis.com: inline <style>
+  #   for the design system + Google Fonts CSS (no other third-party styles)
+  # - font-src 'self' fonts.gstatic.com: Google Fonts WOFF2 files only
   # - img-src 'self' data:: no external images (update if you add a CDN)
-  # - connect-src 'self' https://api.tdoc.xyz: only our API + same-origin
-  # - frame-ancestors 'none': redundant with X-Frame-Options but covers older browsers
-  # - form-action 'self' https://tdoc.lemonsqueezy.com: only our site and LS checkout
-  # - upgrade-insecure-requests: force http→https upgrade automatically
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api.tdoc.xyz; frame-ancestors 'none'; form-action 'self' https://tdoc.lemonsqueezy.com https://*.lemonsqueezy.com; base-uri 'self'; upgrade-insecure-requests
+  # - connect-src 'self' api.tdoc.xyz: only our API + same-origin (live demo)
+  # - frame-ancestors 'none': clickjacking defense (covers older browsers too)
+  # - form-action 'self' lemonsqueezy.com: only our site and LS checkout
+  # - upgrade-insecure-requests: force http→https automatically
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.tdoc.xyz; frame-ancestors 'none'; form-action 'self' https://tdoc.lemonsqueezy.com https://*.lemonsqueezy.com; base-uri 'self'; upgrade-insecure-requests
 
   # Cross-origin isolation defaults — defense in depth against side-channel leaks.
   Cross-Origin-Opener-Policy: same-origin

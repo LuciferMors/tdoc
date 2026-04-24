@@ -1,192 +1,1037 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>tdoc — Typed, queryable, signable documents as an API</title>
-<meta name="description" content="Turn PDFs, DOCX and HTML into typed AXON trees your AI can actually reason over. Every number has a declared type. Every document carries a cryptographic signature. Shipped as a REST API." />
-<meta property="og:title" content="tdoc — Documents as typed, signable data" />
-<meta property="og:description" content="Your LLM can finally read tables, math, and data. One REST call." />
-<meta name="twitter:card" content="summary_large_image" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tdoc — Documents you can trust</title>
+<meta name="description" content="tdoc turns PDFs, DOCX, and HTML into typed, queryable, cryptographically-signable documents. Powered by the open AXON format. Built for the age of AI agents.">
+<meta property="og:title" content="tdoc — Documents you can trust">
+<meta property="og:description" content="Typed every node. Signed every archive. Byte-deterministic. One REST call.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://tdoc.xyz">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0b0b0d">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=Instrument+Sans:wght@400..700&family=JetBrains+Mono:wght@400..600&display=swap">
+
 <style>
-  :root {
-    --bg: #0b0d10;
-    --fg: #e7edf3;
-    --mut: #9aa4ad;
-    --accent: #8b5cf6;
-    --accent2: #22d3ee;
-    --card: #14171c;
-    --line: #1e232a;
+/* ─────────────────────────────────────────────────────────────
+   DESIGN TOKENS
+   ─────────────────────────────────────────────────────────── */
+:root{
+  --ink:            #0b0b0d;
+  --ink-2:          #111115;
+  --paper:          #f5f2ea;
+  --paper-mute:     #8a847a;
+  --paper-dim:      #4f4a42;
+  --fire:           #ff4e00;
+  --fire-soft:      #ff4e0018;
+  --rule:           #23232a;
+  --rule-strong:    #3a3a46;
+
+  --f-display:      "Fraunces", "Iowan Old Style", "Hoefler Text", Georgia, serif;
+  --f-body:         "Instrument Sans", ui-sans-serif, -apple-system, system-ui, sans-serif;
+  --f-mono:         "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --step--1: clamp(0.72rem, 0.7rem + 0.1vw, 0.78rem);
+  --step-0:  clamp(0.95rem, 0.9rem + 0.2vw, 1.05rem);
+  --step-1:  clamp(1.15rem, 1rem + 0.6vw, 1.4rem);
+  --step-2:  clamp(1.5rem, 1.2rem + 1.4vw, 2.25rem);
+  --step-3:  clamp(2.2rem, 1.6rem + 3vw, 3.5rem);
+  --step-4:  clamp(3rem, 2rem + 5vw, 5.5rem);
+  --step-5:  clamp(4rem, 2rem + 9vw, 8.5rem);
+
+  --gutter: clamp(1.25rem, 3vw, 2.5rem);
+  --col: min(1240px, 100% - var(--gutter)*2);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   RESET + GROUND
+   ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body{
+  margin: 0;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--f-body);
+  font-size: var(--step-0);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "ss01", "ss02", "cv11";
+}
+::selection { background: var(--fire); color: var(--ink); }
+a { color: inherit; text-decoration: none; text-underline-offset: 0.2em; }
+a:hover { text-decoration: underline; text-decoration-thickness: 1px; text-decoration-color: var(--fire); }
+hr { border: 0; border-top: 1px solid var(--rule); margin: 0; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+
+/* subtle film-grain across the whole page — adds analog depth without images */
+body::before{
+  content: "";
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 2000;
+  opacity: 0.035;
+  background-image:
+    radial-gradient(1px 1px at 25% 12%, var(--paper) 0%, transparent 50%),
+    radial-gradient(1px 1px at 63% 47%, var(--paper) 0%, transparent 50%),
+    radial-gradient(1px 1px at 87% 83%, var(--paper) 0%, transparent 50%),
+    radial-gradient(1px 1px at 12% 77%, var(--paper) 0%, transparent 50%);
+  background-size: 200px 200px, 180px 180px, 160px 160px, 140px 140px;
+  mix-blend-mode: screen;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   LAYOUT PRIMITIVES
+   ─────────────────────────────────────────────────────────── */
+.wrap { width: var(--col); margin-inline: auto; }
+.rule { border-top: 1px solid var(--rule); }
+.rule-strong { border-top: 1px solid var(--rule-strong); }
+
+/* ─────────────────────────────────────────────────────────────
+   SITE HEADER — serial-number style, like a scientific specimen
+   ─────────────────────────────────────────────────────────── */
+.masthead{
+  border-bottom: 1px solid var(--rule);
+  padding: 1rem 0;
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(11,11,13,0.88);
+  backdrop-filter: saturate(140%) blur(10px);
+  -webkit-backdrop-filter: saturate(140%) blur(10px);
+}
+.masthead__grid{
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 2rem;
+  font-family: var(--f-mono);
+  font-size: var(--step--1);
+}
+.masthead__mark{
+  font-family: var(--f-display);
+  font-weight: 500;
+  font-size: 1.15rem;
+  letter-spacing: -0.015em;
+  font-variation-settings: "opsz" 48, "SOFT" 50;
+}
+.masthead__mark::before{ content: "·"; color: var(--fire); margin-right: 0.22em; }
+.masthead__nav{
+  display: flex;
+  gap: 1.6rem;
+  justify-content: center;
+  color: var(--paper-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+}
+.masthead__nav a:hover { color: var(--paper); text-decoration: none; }
+.masthead__serial{
+  color: var(--paper-mute);
+  letter-spacing: 0.1em;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.masthead__serial b { color: var(--paper); font-weight: 500; }
+
+@media (max-width: 720px){
+  .masthead__grid { grid-template-columns: auto auto; }
+  .masthead__nav { display: none; }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   HERO — typographic, no card, no gradient, no button-shaped button
+   ─────────────────────────────────────────────────────────── */
+.hero{ padding: clamp(3rem, 9vw, 7rem) 0 clamp(3rem, 8vw, 6rem); position: relative; }
+
+.hero__eyebrow{
+  font-family: var(--f-mono);
+  font-size: var(--step--1);
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--paper-mute);
+  margin-bottom: 2rem;
+  display: flex; align-items: center; gap: 0.8rem;
+}
+.hero__eyebrow::before{
+  content: ""; width: 2.2rem; height: 1px; background: var(--fire); display: inline-block;
+}
+
+.hero__title{
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: var(--step-5);
+  line-height: 0.92;
+  letter-spacing: -0.035em;
+  margin: 0;
+  font-variation-settings: "opsz" 144, "SOFT" 30, "WONK" 0;
+  color: var(--paper);
+}
+.hero__title em{
+  font-style: italic;
+  font-weight: 400;
+  color: var(--fire);
+  font-variation-settings: "opsz" 144, "SOFT" 50, "WONK" 1;
+}
+.hero__title .line{ display: block; overflow: hidden; }
+.hero__title .line > span{
+  display: inline-block;
+  will-change: transform, opacity;
+}
+
+.hero__body{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(2rem, 5vw, 5rem);
+  margin-top: clamp(2rem, 5vw, 4rem);
+  padding-top: 2rem;
+  border-top: 1px solid var(--rule);
+  align-items: start;
+}
+.hero__lede{
+  font-family: var(--f-display);
+  font-weight: 300;
+  font-size: var(--step-1);
+  line-height: 1.35;
+  color: var(--paper);
+  letter-spacing: -0.01em;
+  font-variation-settings: "opsz" 36;
+  max-width: 34ch;
+}
+.hero__lede em { font-style: italic; color: var(--fire); }
+
+.hero__meta{
+  font-family: var(--f-mono);
+  font-size: var(--step--1);
+  color: var(--paper-mute);
+  line-height: 1.7;
+  display: flex; flex-direction: column; gap: 0.25rem;
+}
+.hero__meta b { color: var(--paper); font-weight: 500; }
+.hero__meta .row { display: flex; justify-content: space-between; gap: 2rem; border-bottom: 1px dashed var(--rule); padding: 0.45rem 0; }
+.hero__meta .row:last-child { border-bottom: 0; }
+
+.hero__cta{
+  margin-top: 2.5rem;
+  display: flex; flex-wrap: wrap; gap: 1.25rem 2rem; align-items: baseline;
+}
+.cta{
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: var(--step-1);
+  letter-spacing: -0.01em;
+  color: var(--paper);
+  border-bottom: 1px solid var(--fire);
+  padding-bottom: 0.15rem;
+  transition: color 0.25s ease, letter-spacing 0.25s ease;
+  font-variation-settings: "opsz" 36;
+  font-style: italic;
+  position: relative;
+}
+.cta::after{
+  content: "→";
+  font-family: var(--f-body);
+  font-style: normal;
+  margin-left: 0.5rem;
+  color: var(--fire);
+  display: inline-block;
+  transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+.cta:hover{ color: var(--fire); text-decoration: none; letter-spacing: 0.01em; }
+.cta:hover::after{ transform: translateX(0.5rem); }
+
+.cta-mute{
+  font-family: var(--f-mono);
+  font-size: var(--step--1);
+  color: var(--paper-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+.cta-mute:hover{ color: var(--paper); text-decoration: none; }
+
+@media (max-width: 800px){
+  .hero__body{ grid-template-columns: 1fr; gap: 2rem; }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   LIVE API DEMO — the unforgettable moment
+   ─────────────────────────────────────────────────────────── */
+.demo{
+  padding: clamp(3rem, 8vw, 6rem) 0;
+  border-top: 1px solid var(--rule);
+  position: relative;
+}
+.demo__label{
+  font-family: var(--f-mono);
+  font-size: var(--step--1);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--paper-mute);
+  margin-bottom: 1.5rem;
+  display: flex; align-items: center; gap: 0.75rem;
+}
+.demo__label .dot{
+  width: 0.5rem; height: 0.5rem; border-radius: 50%;
+  background: var(--fire);
+  animation: pulse 1.8s ease-in-out infinite;
+  display: inline-block;
+}
+@keyframes pulse{
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%      { opacity: 0.3; transform: scale(0.75); }
+}
+
+.demo__title{
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: var(--step-3);
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  margin: 0 0 2rem;
+  font-variation-settings: "opsz" 72, "SOFT" 40;
+  max-width: 24ch;
+}
+.demo__title em { font-style: italic; color: var(--fire); }
+
+.demo__frame{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border: 1px solid var(--rule);
+  background: var(--ink-2);
+}
+.demo__pane{
+  padding: 1.5rem clamp(1.5rem, 2.5vw, 2rem);
+  font-family: var(--f-mono);
+  font-size: clamp(0.78rem, 0.72rem + 0.3vw, 0.9rem);
+  line-height: 1.55;
+  min-height: 18rem;
+  overflow-x: auto;
+}
+.demo__pane--request{
+  border-right: 1px solid var(--rule);
+  color: var(--paper);
+}
+.demo__pane--response{
+  color: var(--paper);
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0 1.5rem,
+      rgba(245, 242, 234, 0.018) 1.5rem 1.55rem
+    ),
+    var(--ink-2);
+}
+.demo__pane h4{
+  font-family: var(--f-mono);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.7rem;
+  color: var(--paper-mute);
+  margin: 0 0 1rem;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.demo__pane h4 .badge{
+  color: var(--fire);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.65rem;
+}
+.demo__code{
+  white-space: pre;
+  margin: 0;
+  color: var(--paper);
+}
+.demo__code .k { color: var(--fire); }   /* verb / method */
+.demo__code .u { color: var(--paper); }  /* url */
+.demo__code .h { color: var(--paper-mute); }     /* header key */
+.demo__code .s { color: #b8d46a; }       /* string */
+.demo__code .n { color: #f2c36a; }       /* number */
+.demo__code .p { color: var(--paper-mute); }     /* punctuation */
+.demo__code .c { color: var(--paper-dim); font-style: italic; }
+
+.demo__cursor{
+  display: inline-block;
+  width: 0.5em; height: 1em;
+  background: var(--fire);
+  vertical-align: text-bottom;
+  animation: blink 1s steps(2, start) infinite;
+  margin-left: 0.1em;
+}
+@keyframes blink { to { visibility: hidden; } }
+
+.demo__foot{
+  font-family: var(--f-mono);
+  font-size: var(--step--1);
+  color: var(--paper-mute);
+  margin-top: 1.25rem;
+  display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: space-between;
+}
+.demo__foot b { color: var(--paper); font-weight: 500; }
+.demo__foot .dim { color: var(--paper-dim); }
+
+@media (max-width: 880px){
+  .demo__frame { grid-template-columns: 1fr; }
+  .demo__pane--request { border-right: 0; border-bottom: 1px solid var(--rule); }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   FORMAT SPECIMEN — typeset AXON sample, as art
+   ─────────────────────────────────────────────────────────── */
+.specimen{
+  padding: clamp(4rem, 10vw, 8rem) 0 clamp(4rem, 10vw, 6rem);
+  border-top: 1px solid var(--rule);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(2rem, 6vw, 6rem);
+  align-items: start;
+}
+.specimen__prose h2{
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: var(--step-3);
+  line-height: 1.02;
+  margin: 0 0 1.5rem;
+  letter-spacing: -0.025em;
+  font-variation-settings: "opsz" 96, "SOFT" 40;
+}
+.specimen__prose h2 em { font-style: italic; color: var(--fire); }
+.specimen__prose p{
+  font-family: var(--f-display);
+  font-weight: 300;
+  font-size: var(--step-1);
+  line-height: 1.45;
+  max-width: 32ch;
+  color: var(--paper);
+  font-variation-settings: "opsz" 24;
+}
+.specimen__prose .note{
+  font-family: var(--f-mono);
+  font-size: var(--step--1);
+  color: var(--paper-mute);
+  margin-top: 2rem;
+  border-left: 1px solid var(--fire);
+  padding-left: 1rem;
+  max-width: 44ch;
+}
+
+.specimen__axc{
+  font-family: var(--f-mono);
+  font-size: clamp(0.78rem, 0.72rem + 0.25vw, 0.9rem);
+  line-height: 1.55;
+  color: var(--paper);
+  background: var(--ink-2);
+  border: 1px solid var(--rule);
+  padding: 1.5rem clamp(1.25rem, 2vw, 2rem);
+  white-space: pre;
+  overflow-x: auto;
+  position: relative;
+}
+.specimen__axc::before{
+  content: "SPECIMEN · AXON 1.0";
+  position: absolute; top: -0.55rem; left: 1.5rem;
+  background: var(--ink);
+  padding: 0 0.6rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.22em;
+  color: var(--paper-mute);
+}
+.specimen__axc .tag  { color: var(--paper-mute); }
+.specimen__axc .attr { color: var(--paper-mute); }
+.specimen__axc .val  { color: var(--fire); }
+.specimen__axc .type { color: #b8d46a; background: rgba(184,212,106,0.08); padding: 0 0.2rem; border-radius: 1px; }
+.specimen__axc .num  { color: #f2c36a; }
+.specimen__axc .str  { color: var(--paper); }
+
+@media (max-width: 880px){
+  .specimen { grid-template-columns: 1fr; }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   LEDGER — features as a numbered hairline list, not cards
+   ─────────────────────────────────────────────────────────── */
+.ledger{
+  padding: clamp(4rem, 10vw, 8rem) 0;
+  border-top: 1px solid var(--rule-strong);
+}
+.ledger__head{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(2rem, 5vw, 5rem);
+  margin-bottom: clamp(2rem, 5vw, 4rem);
+  align-items: end;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--rule);
+}
+.ledger__head h2{
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: var(--step-3);
+  letter-spacing: -0.02em;
+  line-height: 1.02;
+  margin: 0;
+  font-variation-settings: "opsz" 96, "SOFT" 40;
+  max-width: 14ch;
+}
+.ledger__head h2 em { font-style: italic; color: var(--fire); }
+.ledger__head .caption{
+  font-family: var(--f-mono);
+  font-size: var(--step--1);
+  color: var(--paper-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  text-align: right;
+}
+
+.ledger__row{
+  display: grid;
+  grid-template-columns: 3rem 1fr 2fr 6rem;
+  gap: clamp(1rem, 2.5vw, 2.5rem);
+  align-items: baseline;
+  padding: 1.5rem 0;
+  border-bottom: 1px solid var(--rule);
+  transition: background 0.35s ease;
+}
+.ledger__row:hover{ background: linear-gradient(90deg, var(--fire-soft) 0%, transparent 40%); }
+.ledger__num{
+  font-family: var(--f-mono);
+  font-size: var(--step--1);
+  color: var(--paper-mute);
+  font-variant-numeric: tabular-nums;
+}
+.ledger__name{
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: var(--step-2);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--paper);
+  font-variation-settings: "opsz" 48, "SOFT" 40;
+}
+.ledger__name em { font-style: italic; color: var(--fire); }
+.ledger__detail{
+  font-family: var(--f-body);
+  color: var(--paper-mute);
+  font-size: var(--step-0);
+  line-height: 1.5;
+  max-width: 52ch;
+}
+.ledger__tag{
+  font-family: var(--f-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--paper-mute);
+  text-align: right;
+}
+
+@media (max-width: 780px){
+  .ledger__head{ grid-template-columns: 1fr; gap: 1rem; align-items: start; }
+  .ledger__head .caption{ text-align: left; }
+  .ledger__row{
+    grid-template-columns: 2rem 1fr;
+    grid-template-areas:
+      "n name"
+      ".  detail"
+      ".  tag";
+    gap: 0.25rem 1rem;
   }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--fg); font-family: ui-sans-serif, -apple-system, system-ui, Segoe UI, Roboto, sans-serif; line-height: 1.55; }
-  a { color: var(--accent2); text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  header, main, footer { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1.25rem; }
-  header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
-  .logo { font-weight: 700; letter-spacing: -0.01em; font-size: 1.25rem; }
-  .logo span { color: var(--accent); }
-  nav a { margin-left: 1.25rem; color: var(--mut); font-size: 0.95rem; }
-  nav a:hover { color: var(--fg); }
-  .hero { padding: 4rem 1.25rem 2rem; }
-  .hero h1 { font-size: clamp(2rem, 5vw, 3.4rem); margin: 0 0 1rem; letter-spacing: -0.02em; }
-  .hero h1 em { font-style: normal; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .hero p { font-size: 1.15rem; color: var(--mut); max-width: 60ch; }
-  .cta { display: inline-flex; gap: 0.75rem; margin-top: 1.25rem; flex-wrap: wrap; }
-  .btn { padding: 0.75rem 1.25rem; border-radius: 0.5rem; border: 1px solid var(--line); background: var(--card); color: var(--fg); font-weight: 600; cursor: pointer; display: inline-block; }
-  .btn.primary { background: linear-gradient(135deg, var(--accent), #6d28d9); border-color: transparent; }
-  .badge { display: inline-block; margin-bottom: 1rem; padding: 0.25rem 0.65rem; font-size: 0.75rem; color: var(--accent2); border: 1px solid var(--accent2); border-radius: 999px; opacity: 0.9; }
-  section { padding: 3rem 0; border-top: 1px solid var(--line); }
-  section h2 { font-size: 1.6rem; margin: 0 0 1rem; letter-spacing: -0.01em; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 0.75rem; padding: 1.25rem; }
-  .card h3 { margin: 0 0 0.5rem; font-size: 1rem; }
-  .card p { margin: 0; color: var(--mut); font-size: 0.95rem; }
-  pre { background: #0f1217; border: 1px solid var(--line); padding: 1rem 1.25rem; border-radius: 0.5rem; overflow-x: auto; font-size: 0.9rem; }
-  pre code { color: #cdd6f4; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
-  .price { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1rem; }
-  .tier { background: var(--card); border: 1px solid var(--line); border-radius: 0.75rem; padding: 1.5rem; }
-  .tier.featured { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
-  .tier h3 { margin: 0 0 0.25rem; font-size: 1.1rem; }
-  .tier .amount { font-size: 2rem; font-weight: 700; margin: 0.5rem 0; }
-  .tier .amount small { font-size: 0.85rem; color: var(--mut); font-weight: 400; }
-  .tier ul { padding: 0 0 0 1.1rem; margin: 0.5rem 0 1rem; color: var(--mut); font-size: 0.95rem; }
-  .tier ul li { margin: 0.25rem 0; }
-  footer { color: var(--mut); font-size: 0.85rem; text-align: center; border-top: 1px solid var(--line); margin-top: 3rem; }
-  .kpi { display: flex; gap: 2rem; flex-wrap: wrap; color: var(--mut); font-size: 0.95rem; margin-top: 1.5rem; }
-  .kpi b { color: var(--fg); font-weight: 700; }
+  .ledger__num { grid-area: n; }
+  .ledger__name { grid-area: name; }
+  .ledger__detail { grid-area: detail; margin-top: 0.5rem; }
+  .ledger__tag { grid-area: tag; text-align: left; margin-top: 0.5rem; }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PRICING — typeset price list, menu-style
+   ─────────────────────────────────────────────────────────── */
+.pricing{
+  padding: clamp(4rem, 10vw, 8rem) 0;
+  border-top: 1px solid var(--rule-strong);
+}
+.pricing__title{
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: var(--step-4);
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  margin: 0 0 0.5rem;
+  font-variation-settings: "opsz" 144, "SOFT" 30;
+  max-width: 18ch;
+}
+.pricing__title em{ font-style: italic; color: var(--fire); }
+.pricing__kicker{
+  font-family: var(--f-mono);
+  font-size: var(--step--1);
+  color: var(--paper-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  margin: 0 0 3rem;
+}
+
+.pricing__list{ list-style: none; margin: 0; padding: 0; }
+.pricing__row{
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto;
+  gap: clamp(1rem, 3vw, 2.5rem);
+  align-items: baseline;
+  padding: 1.75rem 0;
+  border-top: 1px solid var(--rule);
+  transition: padding 0.45s cubic-bezier(0.2, 0.9, 0.2, 1.1);
+  position: relative;
+}
+.pricing__row:last-child{ border-bottom: 1px solid var(--rule); }
+.pricing__row:hover{ padding-left: 0.75rem; }
+.pricing__row::before{
+  content: "";
+  position: absolute;
+  left: 0; top: 50%;
+  width: 0; height: 1px;
+  background: var(--fire);
+  transition: width 0.4s cubic-bezier(0.2, 0.9, 0.2, 1.1);
+}
+.pricing__row:hover::before{ width: 0.5rem; }
+
+.pricing__tier{
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: var(--step-2);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--paper);
+  font-variation-settings: "opsz" 48, "SOFT" 40;
+  min-width: 8ch;
+}
+.pricing__tier em{ font-style: italic; color: var(--fire); }
+.pricing__leader{
+  flex: 1;
+  font-family: var(--f-mono);
+  color: var(--paper-dim);
+  letter-spacing: 0.25em;
+  text-align: center;
+  font-size: 0.7rem;
+  user-select: none;
+}
+.pricing__detail{
+  font-family: var(--f-body);
+  font-size: var(--step-0);
+  color: var(--paper-mute);
+  line-height: 1.5;
+  max-width: 42ch;
+}
+.pricing__detail b{ color: var(--paper); font-weight: 500; }
+.pricing__price{
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: var(--step-2);
+  line-height: 1;
+  color: var(--paper);
+  font-variant-numeric: tabular-nums;
+  font-variation-settings: "opsz" 48;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.pricing__price small{
+  font-family: var(--f-mono);
+  font-size: 0.7rem;
+  color: var(--paper-mute);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-left: 0.4rem;
+  font-weight: 400;
+}
+.pricing__price--free{ color: var(--fire); }
+
+.pricing__cta-row{
+  margin-top: 3rem;
+  display: flex; flex-wrap: wrap; gap: 2rem; align-items: baseline;
+}
+
+@media (max-width: 780px){
+  .pricing__row{
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "tier price"
+      "detail detail";
+    gap: 0.75rem;
+  }
+  .pricing__tier { grid-area: tier; }
+  .pricing__price { grid-area: price; text-align: right; }
+  .pricing__detail { grid-area: detail; margin-top: 0.5rem; }
+  .pricing__leader { display: none; }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   THESIS — a single long paragraph, Tufte-style margin note
+   ─────────────────────────────────────────────────────────── */
+.thesis{
+  padding: clamp(4rem, 10vw, 8rem) 0;
+  border-top: 1px solid var(--rule-strong);
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: clamp(2rem, 5vw, 5rem);
+  align-items: start;
+}
+.thesis__side{
+  font-family: var(--f-mono);
+  font-size: var(--step--1);
+  color: var(--paper-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  position: sticky; top: 6rem;
+}
+.thesis__side span{ color: var(--fire); }
+.thesis__body{
+  font-family: var(--f-display);
+  font-weight: 300;
+  font-size: var(--step-2);
+  line-height: 1.3;
+  color: var(--paper);
+  letter-spacing: -0.015em;
+  max-width: 32ch;
+  font-variation-settings: "opsz" 48;
+}
+.thesis__body em{ font-style: italic; color: var(--fire); }
+
+@media (max-width: 780px){
+  .thesis{ grid-template-columns: 1fr; }
+  .thesis__side{ position: static; }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   FOOTER — archive colophon
+   ─────────────────────────────────────────────────────────── */
+.colophon{
+  padding: clamp(3rem, 6vw, 5rem) 0 3rem;
+  border-top: 1px solid var(--rule);
+  font-family: var(--f-mono);
+  font-size: var(--step--1);
+  color: var(--paper-mute);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2rem;
+  align-items: end;
+}
+.colophon a { color: var(--paper-mute); }
+.colophon a:hover { color: var(--paper); text-decoration: none; }
+
+.colophon__badges{
+  display: flex; gap: 1.25rem; flex-wrap: wrap;
+}
+.colophon__badge{
+  border: 1px solid var(--rule-strong);
+  padding: 0.35rem 0.7rem;
+  letter-spacing: 0.14em;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: 0.4rem;
+}
+.colophon__badge b{ color: var(--fire); font-weight: 500; }
+.colophon__lines{
+  display: grid; gap: 0.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.68rem;
+}
+.colophon__lines em{ color: var(--paper); font-style: normal; font-weight: 500; }
+
+@media (max-width: 720px){ .colophon{ grid-template-columns: 1fr; } }
+
+/* ─────────────────────────────────────────────────────────────
+   MOTION — reveal-on-scroll + hero entry
+   ─────────────────────────────────────────────────────────── */
+[data-reveal]{ opacity: 0; transform: translateY(1.5rem); transition: opacity 1s ease, transform 1s cubic-bezier(0.2, 0.9, 0.3, 1.1); }
+[data-reveal].is-in{ opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  [data-reveal]{ opacity: 1; transform: none; }
+  .demo__cursor, .demo__label .dot{ animation: none; }
+}
 </style>
 </head>
+
 <body>
-<header>
-  <div class="logo">.<span>tdoc</span></div>
-  <nav>
-    <a href="#features">Features</a>
-    <a href="#api">API</a>
-    <a href="#pricing">Pricing</a>
-    <a href="https://github.com/LuciferMors/tdoc">Open source</a>
-  </nav>
+
+<header class="masthead">
+  <div class="wrap masthead__grid">
+    <a href="#" class="masthead__mark">tdoc</a>
+    <nav class="masthead__nav" aria-label="Primary">
+      <a href="#demo">Demo</a>
+      <a href="#format">Format</a>
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <a href="https://github.com/LuciferMors/tdoc" rel="noopener">Source</a>
+    </nav>
+    <div class="masthead__serial"><b>VOL&nbsp;0.1</b> · SHIPPING&nbsp;2026 · <b>A+</b>&nbsp;125/130</div>
+  </div>
 </header>
 
 <main>
-  <section class="hero" style="border-top: 0; padding-top: 3rem;">
-    <span class="badge">Document infrastructure for the AI era</span>
-    <h1>Your LLM can finally read <em>tables, math, and data</em>.</h1>
+
+<!-- HERO ────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="wrap">
+
+    <div class="hero__eyebrow" data-reveal>Document infrastructure · Volume 0.1 · 2026</div>
+
+    <h1 class="hero__title" aria-label="Documents you can trust.">
+      <span class="line"><span>Documents</span></span>
+      <span class="line"><span>you can</span></span>
+      <span class="line"><span><em>trust.</em></span></span>
+    </h1>
+
+    <div class="hero__body">
+      <p class="hero__lede" data-reveal>
+        <em>tdoc</em> turns PDFs, DOCX, and HTML into typed, queryable, cryptographically&#8209;signed
+        documents. Every number carries a declared type. Every archive hashes to the same
+        bytes, always. Ship it in one REST call.
+      </p>
+      <aside class="hero__meta" aria-label="Specimen" data-reveal>
+        <div class="row"><span>Format</span><b>AXON 1.0</b></div>
+        <div class="row"><span>File</span><b>.tdoc</b></div>
+        <div class="row"><span>Signing</span><b>Ed25519</b></div>
+        <div class="row"><span>Determinism</span><b>Byte-exact</b></div>
+        <div class="row"><span>Tests passing</span><b>50&nbsp;/&nbsp;50</b></div>
+        <div class="row"><span>Security grade</span><b>A+ · Mozilla Observatory</b></div>
+      </aside>
+    </div>
+
+    <div class="hero__cta" data-reveal>
+      <a class="cta" href="#pricing">Start free</a>
+      <a class="cta-mute" href="#demo">See it run</a>
+      <a class="cta-mute" href="https://github.com/LuciferMors/tdoc" rel="noopener">Read the source</a>
+    </div>
+
+  </div>
+</section>
+
+<!-- LIVE DEMO ────────────────────────────────────────────── -->
+<section class="demo" id="demo">
+  <div class="wrap">
+
+    <div class="demo__label" data-reveal>
+      <span class="dot" aria-hidden="true"></span>
+      Live · calling api.tdoc.xyz right now
+    </div>
+
+    <h2 class="demo__title" data-reveal>
+      Not a mock. <em>Real bytes.</em> From our own production API.
+    </h2>
+
+    <div class="demo__frame" data-reveal>
+      <div class="demo__pane demo__pane--request">
+        <h4>Request <span class="badge">ON LOAD</span></h4>
+        <pre class="demo__code"><code><span class="k">GET</span> <span class="u">https://api.tdoc.xyz/v1/healthz</span>
+<span class="h">accept</span><span class="p">:</span> <span class="s">application/json</span>
+<span class="h">user-agent</span><span class="p">:</span> <span class="s">tdoc-landing/0.1</span>
+<span class="c"># api.tdoc.xyz is a Cloudflare Worker proxying to a</span>
+<span class="c"># Hugging Face Space running product/service/main.py.</span>
+<span class="c"># Uptime: since 2026-04-24.</span></code></pre>
+      </div>
+      <div class="demo__pane demo__pane--response">
+        <h4>Response <span class="badge" id="demo-status">PENDING</span></h4>
+        <pre class="demo__code"><code id="demo-response"></code><span class="demo__cursor" id="demo-cursor" aria-hidden="true"></span></pre>
+      </div>
+    </div>
+
+    <div class="demo__foot" data-reveal>
+      <span>Round-trip <b id="demo-latency">—</b> · Edge <b id="demo-edge">—</b></span>
+      <span class="dim">Hit <a href="https://api.tdoc.xyz/docs" rel="noopener">/docs</a> for the full OpenAPI surface.</span>
+    </div>
+
+  </div>
+</section>
+
+<!-- FORMAT SPECIMEN ─────────────────────────────────────── -->
+<section class="specimen" id="format">
+
+  <div class="specimen__prose" data-reveal>
+    <h2>A format, <em>not</em> a file.</h2>
     <p>
-      tdoc turns any PDF, DOCX, or HTML into a <code>.tdoc</code> — a typed, queryable,
-      signable document file. Every number carries a declared type. Every file carries an
-      Ed25519 signature. Every archive is byte-deterministic — same input, same bytes out,
-      always. Ship in a single REST call.
+      AXON separates what a document <em>says</em> from how it <em>renders</em>.
+      The content tree is typed. A <code style="color:var(--fire);font-family:var(--f-mono);">pvalue</code>
+      is a p-value. A <code style="color:var(--fire);font-family:var(--f-mono);">measure</code> carries units.
+      A <code style="color:var(--fire);font-family:var(--f-mono);">currency</code> knows its ticker.
     </p>
-    <div class="cta">
-      <a class="btn primary" href="#pricing">Start free</a>
-      <a class="btn" href="#api">Read the API</a>
-      <a class="btn" href="https://github.com/LuciferMors/tdoc">Self-host</a>
-    </div>
-    <div class="kpi">
-      <div><b>&lt; 2s</b> median latency, 10-page PDF</div>
-      <div><b>100 docs/mo</b> free, forever</div>
-      <div><b>Ed25519</b> signatures, zero wall-clock drift</div>
-    </div>
-  </section>
-
-  <section id="features">
-    <h2>What you get</h2>
-    <div class="grid">
-      <div class="card"><h3>Typed every node</h3><p>Cells declare <code>data-type="pvalue"</code> / <code>measure</code> / <code>currency</code>. Your downstream code never guesses.</p></div>
-      <div class="card"><h3>Query with AQL</h3><p>"Find every p-value &lt; 0.05 in this 300-page paper" — one line, no LLM needed.</p></div>
-      <div class="card"><h3>Signed &amp; verifiable</h3><p>Ed25519 over canonical bytes. Tamper once, verification fails forever.</p></div>
-      <div class="card"><h3>Byte-deterministic</h3><p>Same input → same output, guaranteed. Hash it, sign it, audit it.</p></div>
-      <div class="card"><h3>Accessibility built in</h3><p>alt-text coverage, equation descriptions, reading order — not an afterthought.</p></div>
-      <div class="card"><h3>Open format</h3><p>Run the SDK offline. Your data never needs to stay on our servers.</p></div>
-    </div>
-  </section>
-
-  <section id="api">
-    <h2>Two lines to structured data</h2>
-<pre><code>curl -X POST https://api.tdoc.xyz/v1/structure \
-  -H "Authorization: Bearer $TDOC_KEY" \
-  -F "file=@paper.pdf" \
-  -F "title=My Paper"</code></pre>
-    <p style="color: var(--mut); margin-top: 1rem;">
-      Returns an AXON document tree. Run <code>/v1/query</code> for AQL, <code>/v1/sign</code> for
-      Ed25519, <code>/v1/verify</code> to validate a third-party archive. Full OpenAPI spec at
-      <code>/docs</code>.
+    <p class="note">
+      Your agent never has to guess whether &ldquo;p&nbsp;=&nbsp;0.03&rdquo; is a probability,
+      a typo, or a page number. It&rsquo;s declared. It&rsquo;s signed. It round-trips to the same bytes.
     </p>
-  </section>
+  </div>
 
-  <section id="pricing">
-    <h2>Pricing</h2>
-    <p style="color: var(--mut);">Start free. No credit card. Upgrade when your project does.</p>
-    <div class="price">
-      <div class="tier">
-        <h3>Free</h3>
-        <div class="amount">$0<small>/mo</small></div>
-        <ul>
-          <li>100 documents / month</li>
-          <li>All parsing features</li>
-          <li>AQL queries included</li>
-          <li>Community support</li>
-        </ul>
-        <a class="btn" href="#signup">Get API key</a>
-      </div>
-      <div class="tier">
-        <h3>Pro</h3>
-        <div class="amount">$29<small>/mo</small></div>
-        <ul>
-          <li>2,000 documents / month</li>
-          <li>Email support</li>
-          <li>No hard overage — upgrade anytime</li>
-          <li><s>Signing</s> (Team+)</li>
-        </ul>
-        <a class="btn" href="#checkout-pro">Start Pro</a>
-      </div>
-      <div class="tier featured">
-        <h3>Team</h3>
-        <div class="amount">$99<small>/mo</small></div>
-        <ul>
-          <li>10K documents / month</li>
-          <li>Ed25519 signing + verification</li>
-          <li>Priority email (24h SLA)</li>
-          <li>Overage: $0.02 / doc</li>
-        </ul>
-        <a class="btn primary" href="#checkout-team">Start Team</a>
-      </div>
-      <div class="tier">
-        <h3>Scale</h3>
-        <div class="amount">$499<small>/mo</small></div>
-        <ul>
-          <li>100K documents / month</li>
-          <li>Self-hosted option</li>
-          <li>Slack support channel</li>
-          <li>Overage: $0.01 / doc</li>
-        </ul>
-        <a class="btn" href="mailto:hello@tdoc.xyz">Talk to us</a>
-      </div>
+  <pre class="specimen__axc" data-reveal aria-label="AXON specimen"><code>&lt;<span class="tag">section</span> <span class="attr">id=</span><span class="val">"results"</span>&gt;
+  &lt;<span class="tag">heading</span> <span class="attr">level=</span><span class="val">"2"</span>&gt;Outcome&lt;/<span class="tag">heading</span>&gt;
+  &lt;<span class="tag">paragraph</span>&gt;
+    &lt;<span class="tag">measure</span> <span class="attr">type=</span><span class="type">pvalue</span>
+             <span class="attr">value=</span><span class="num">0.003</span>&gt;p = 0.003&lt;/<span class="tag">measure</span>&gt;
+    at the 10<sup>th</sup> minute, with a
+    &lt;<span class="tag">measure</span> <span class="attr">type=</span><span class="type">ci</span>
+             <span class="attr">value=</span><span class="num">[0.41, 0.78]</span>&gt;
+      95&#x2009;% CI [0.41, 0.78]
+    &lt;/<span class="tag">measure</span>&gt;.
+  &lt;/<span class="tag">paragraph</span>&gt;
+  &lt;<span class="tag">table</span> <span class="attr">id=</span><span class="val">"t1"</span> <span class="attr">summary=</span><span class="val">"arm-by-arm"</span>&gt;
+    &lt;<span class="tag">cell</span> <span class="attr">type=</span><span class="type">currency</span>
+          <span class="attr">ticker=</span><span class="val">"USD"</span>&gt;$12,400&lt;/<span class="tag">cell</span>&gt;
+    &lt;<span class="tag">cell</span> <span class="attr">type=</span><span class="type">measure</span>
+          <span class="attr">unit=</span><span class="val">"mg/dL"</span>&gt;142.7&lt;/<span class="tag">cell</span>&gt;
+  &lt;/<span class="tag">table</span>&gt;
+&lt;/<span class="tag">section</span>&gt;</code></pre>
+
+</section>
+
+<!-- LEDGER ──────────────────────────────────────────────── -->
+<section class="ledger" id="features">
+  <div class="wrap">
+
+    <div class="ledger__head" data-reveal>
+      <h2>The <em>ledger.</em></h2>
+      <div class="caption">Six invariants the reference impl&nbsp;keeps</div>
     </div>
-  </section>
 
-  <section>
-    <h2>Why now</h2>
-    <p style="color: var(--mut); max-width: 70ch;">
-      Every AI team is losing 20–40% of document quality to broken PDF ingestion.
-      Tables become strings. Equations become gibberish. P-values lose their type.
-      tdoc gives LLMs the same structured view a database has —
-      so your agents can cite a number, not just see it.
-    </p>
-  </section>
+    <div class="ledger__row" data-reveal>
+      <div class="ledger__num">01</div>
+      <div class="ledger__name">Typed every node.</div>
+      <div class="ledger__detail">Cells declare <code>data-type</code>: <code>pvalue</code>, <code>measure</code>, <code>currency</code>, <code>ci</code>, <code>date</code>, &amp;c. Your downstream code never guesses.</div>
+      <div class="ledger__tag">Schema</div>
+    </div>
+
+    <div class="ledger__row" data-reveal>
+      <div class="ledger__num">02</div>
+      <div class="ledger__name"><em>AQL</em> — query in one line.</div>
+      <div class="ledger__detail">&ldquo;Every p&#8209;value &lt; 0.05 in this 300&#8209;page paper.&rdquo; No LLM needed. Runs in milliseconds against the parsed tree.</div>
+      <div class="ledger__tag">Query</div>
+    </div>
+
+    <div class="ledger__row" data-reveal>
+      <div class="ledger__num">03</div>
+      <div class="ledger__name">Ed25519 signed.</div>
+      <div class="ledger__detail">Signatures cover the canonical byte stream + manifest. Tamper once &mdash; verification fails forever.</div>
+      <div class="ledger__tag">Integrity</div>
+    </div>
+
+    <div class="ledger__row" data-reveal>
+      <div class="ledger__num">04</div>
+      <div class="ledger__name">Byte&#8209;deterministic.</div>
+      <div class="ledger__detail">Encode the same document twice, produce the same bytes. Hash&nbsp;it, sign&nbsp;it, audit&nbsp;it, diff&nbsp;it &mdash; no wall-clock drift.</div>
+      <div class="ledger__tag">Reproducible</div>
+    </div>
+
+    <div class="ledger__row" data-reveal>
+      <div class="ledger__num">05</div>
+      <div class="ledger__name">Accessible by design.</div>
+      <div class="ledger__detail">Alt-text coverage, equation descriptions, reading-order validation &mdash; enforced in <code>validate()</code>, not bolted on.</div>
+      <div class="ledger__tag">A11y</div>
+    </div>
+
+    <div class="ledger__row" data-reveal>
+      <div class="ledger__num">06</div>
+      <div class="ledger__name">Open format, <em>always.</em></div>
+      <div class="ledger__detail">Apache 2.0 reference impl. The spec lives next to the code. Run it offline, self-host, fork it &mdash; we still win.</div>
+      <div class="ledger__tag">License</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- PRICING ─────────────────────────────────────────────── -->
+<section class="pricing" id="pricing">
+  <div class="wrap">
+
+    <h2 class="pricing__title" data-reveal>Prices, <em>plain.</em></h2>
+    <p class="pricing__kicker" data-reveal>No credit card · No seat taxes · No surprises</p>
+
+    <ol class="pricing__list">
+
+      <li class="pricing__row" data-reveal>
+        <div class="pricing__tier">Free</div>
+        <div class="pricing__leader">· · · · · · · · · · · · · · · · · · · ·</div>
+        <div class="pricing__detail"><b>100 documents / month.</b> All parsing features. AQL queries included. Forever.</div>
+        <div class="pricing__price pricing__price--free">$0<small>/mo</small></div>
+      </li>
+
+      <li class="pricing__row" data-reveal>
+        <div class="pricing__tier">Pro</div>
+        <div class="pricing__leader">· · · · · · · · · · · · · · · · · · · ·</div>
+        <div class="pricing__detail"><b>2,000 documents / month.</b> Email support. Upgrade anytime &mdash; no hard overage block.</div>
+        <div class="pricing__price">$29<small>/mo</small></div>
+      </li>
+
+      <li class="pricing__row" data-reveal>
+        <div class="pricing__tier"><em>Team</em></div>
+        <div class="pricing__leader">· · · · · · · · · · · · · · · · · · · ·</div>
+        <div class="pricing__detail"><b>10,000 documents / month.</b> Ed25519 signing &amp; verification. 24-hour email SLA. Overage <b>$0.02/doc</b>.</div>
+        <div class="pricing__price">$99<small>/mo</small></div>
+      </li>
+
+      <li class="pricing__row" data-reveal>
+        <div class="pricing__tier">Scale</div>
+        <div class="pricing__leader">· · · · · · · · · · · · · · · · · · · ·</div>
+        <div class="pricing__detail"><b>100,000 documents / month.</b> Self&#8209;hosted option. Slack support. Overage <b>$0.01/doc</b>.</div>
+        <div class="pricing__price">$499<small>/mo</small></div>
+      </li>
+
+    </ol>
+
+    <div class="pricing__cta-row" data-reveal>
+      <a class="cta" href="https://github.com/LuciferMors/tdoc" rel="noopener">Self-host for free</a>
+      <a class="cta-mute" href="mailto:hello@tdoc.xyz">Enterprise &amp; invoice billing</a>
+    </div>
+
+  </div>
+</section>
+
+<!-- THESIS ──────────────────────────────────────────────── -->
+<section class="thesis">
+
+  <div class="thesis__side" data-reveal>
+    <div>Vol. 0.1 · <span>Thesis</span></div>
+    <div>2026 &mdash; present</div>
+  </div>
+
+  <p class="thesis__body" data-reveal>
+    Every AI team is <em>losing 20&ndash;40&#8239;%</em> of document quality to broken PDF ingestion.
+    Tables become strings. Equations become gibberish. P&#8209;values lose their type.
+    tdoc gives agents the same structured view a database has &mdash;
+    so your models cite a number, rather than merely see it.
+  </p>
+
+</section>
+
 </main>
 
-<footer>
-  <p>
-    <a href="https://developer.mozilla.org/en-US/observatory/analyze?host=tdoc.xyz"
-       style="color: var(--accent2); border: 1px solid var(--accent2); padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.75rem;"
-       rel="noopener"
-       title="Mozilla Observatory v5 — 10/10 tests passed, 125 points">
-      Mozilla Observatory · A+ · 125/125
-    </a>
-  </p>
-  <p>tdoc · Built on the open AXON format · <code>.tdoc</code> is a registered file extension · Apache-2.0 · Made in India 🇮🇳</p>
+<footer class="colophon">
+  <div class="wrap colophon" style="padding: 0; border: 0; display: grid; grid-template-columns: 1fr auto; gap: 2rem; align-items: end;">
+
+    <div class="colophon__lines">
+      <div><em>tdoc</em> &mdash; <a href="https://github.com/LuciferMors/tdoc" rel="noopener">open source</a>, Apache 2.0</div>
+      <div>Set in <em>Fraunces</em>, <em>Instrument Sans</em>, <em>JetBrains Mono</em></div>
+      <div>Made in India &mdash; typed, shipped, signed</div>
+      <div>Contact: <a href="mailto:hello@tdoc.xyz">hello@tdoc.xyz</a></div>
+    </div>
+
+    <div class="colophon__badges">
+      <a class="colophon__badge" href="https://developer.mozilla.org/en-US/observatory/analyze?host=tdoc.xyz" rel="noopener">
+        Mozilla Observatory <b>A+ · 125</b>
+      </a>
+      <a class="colophon__badge" href="https://developer.mozilla.org/en-US/observatory/analyze?host=api.tdoc.xyz" rel="noopener">
+        API <b>A+ · 130</b>
+      </a>
+      <a class="colophon__badge" href="https://pypi.org/project/axon-document/" rel="noopener">
+        PyPI <b>v0.1.0</b>
+      </a>
+    </div>
+
+  </div>
 </footer>
+
+<script src="./app.js"></script>
 </body>
 </html>
