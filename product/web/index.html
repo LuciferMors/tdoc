@@ -10,7 +10,10 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://tdoc.xyz">
 <meta name="twitter:card" content="summary">
-<meta name="theme-color" content="#fafaf7">
+<meta name="theme-color" content="#fafaf7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141310" media="(prefers-color-scheme: dark)">
+
+<script src="./theme.js"></script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,11 +22,14 @@
 <style>
 /* ────────────────────────────────────────────────────────────
    tdoc — Printed Matter
-   A light-mode editorial aesthetic. Newsreader + JetBrains Mono.
-   One accent: oxblood. No gradients. No cards. No dark tech-tropes.
+   Editorial aesthetic, two themes. Newsreader + JetBrains Mono.
+   One accent: oxblood. No gradients. No cards. No tech-tropes.
+
+   Day:   paper & ink, 1960s Swiss type catalogue
+   Night: aged leather at low light, library after hours
    ──────────────────────────────────────────────────────────── */
 
-:root{
+:root, [data-theme="light"]{
   --paper:         #fafaf7;
   --paper-2:       #f2eee4;
   --ink:           #0c0c0c;
@@ -34,6 +40,29 @@
   --rule-soft:     #e6e1d4;
   --oxblood:       #7a0c1a;
   --oxblood-wash:  #7a0c1a10;
+  --shadow-tint:   rgba(12, 12, 12, 0);
+}
+
+[data-theme="dark"]{
+  /* Not pure black. Warm near-black — the colour of bound leather
+     lit by a reading lamp. The surface lifts a touch in paper-2 so
+     code blocks sit on their own plane. */
+  --paper:         #141310;
+  --paper-2:       #1c1a15;
+  /* Cream ink, graded down for secondary + muted tiers. Cooler at
+     the muted end so mono labels don't glow. */
+  --ink:           #efe9d9;
+  --ink-2:         #c6c0b1;
+  --ink-3:         #8a8577;
+  --ink-4:         #5a574f;
+  --rule:          #2c2a24;
+  --rule-soft:     #221f1a;
+  /* Oxblood lifted for contrast on dark, still in the burgundy family —
+     not coral, not candy. Tested for AA contrast on #141310. */
+  --oxblood:       #d85565;
+  --oxblood-wash:  #d8556518;
+  --shadow-tint:   rgba(0, 0, 0, 0.25);
+}
 
   --serif:  "Newsreader", "Iowan Old Style", Baskerville, Georgia, serif;
   --mono:   "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
@@ -58,6 +87,9 @@ body{
   font-feature-settings: "onum", "kern";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* Only transition the two colours that actually swap per theme. Avoid
+     transitioning everything — causes jank and a stale flash on toggle. */
+  transition: background-color 0.35s ease, color 0.35s ease;
 }
 ::selection{ background: var(--oxblood); color: var(--paper); }
 
@@ -108,6 +140,27 @@ button{ font: inherit; color: inherit; background: none; border: 0; padding: 0; 
   font-variant-numeric: tabular-nums;
 }
 .masthead__meta a{ color: var(--ink-3); text-decoration: none; }
+
+/* Theme toggle — Day · Night, minimal text control. Both words are
+   buttons; the active one carries the oxblood underline. aria-pressed
+   does the semantic lifting for assistive tech. */
+.theme-toggle{ display: inline-flex; align-items: baseline; gap: 0.4rem; }
+.theme-toggle button{
+  font: inherit;
+  color: var(--ink-4);
+  background: transparent;
+  border: 0; padding: 0; cursor: pointer;
+  letter-spacing: inherit;
+  transition: color 0.2s ease;
+}
+.theme-toggle button:hover{ color: var(--ink); }
+.theme-toggle button[aria-pressed="true"]{
+  color: var(--oxblood);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.25em;
+}
+.theme-toggle .sep{ color: var(--ink-4); user-select: none; }
 .masthead__meta a:hover{ color: var(--oxblood); text-decoration: underline; }
 
 @media (max-width: 600px){
@@ -610,7 +663,13 @@ button{ font: inherit; color: inherit; background: none; border: 0; padding: 0; 
     <h1 class="masthead__title"><a href="#">tdoc<em>.</em></a></h1>
     <div class="masthead__meta">
       <div><a href="#letter">About</a> · <a href="#format">Format</a> · <a href="#rates">Rates</a> · <a href="https://github.com/LuciferMors/tdoc" rel="noopener">Source</a></div>
-      <div><a href="mailto:hello@tdoc.xyz">hello@tdoc.xyz</a></div>
+      <div>
+        <a href="mailto:hello@tdoc.xyz">hello@tdoc.xyz</a>
+        &nbsp;&nbsp;
+        <span class="theme-toggle" role="group" aria-label="Theme">
+          <button type="button" data-theme-set="light" aria-pressed="true">Day</button><span class="sep" aria-hidden="true">·</span><button type="button" data-theme-set="dark" aria-pressed="false">Night</button>
+        </span>
+      </div>
     </div>
   </div>
 </header>
