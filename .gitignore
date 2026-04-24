@@ -26,6 +26,9 @@ demo_out/
 .genesis/
 .founder_agent/
 
+# Internal strategy docs — not public (ICP, pricing, financial model)
+docs/
+
 # Secrets (future — in case you add any .env files)
 .env
 .env.local
