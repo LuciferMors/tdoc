@@ -2,14 +2,15 @@ name = "tdoc-api-proxy"
 main = "src/worker.js"
 compatibility_date = "2026-04-01"
 
-# Bind the Worker to api.tdoc.xyz/* so every request under that subdomain
-# hits the Worker, which reverse-proxies to the HF Space.
+# Bind the Worker to api.tdoc.xyz as a Cloudflare Custom Domain.
 #
-# `zone_name = "tdoc.xyz"` tells Wrangler which zone to touch.
-# `pattern` is the URL pattern that triggers the Worker.
+# `custom_domain = true` makes wrangler auto-create the DNS record AND
+# provision a TLS certificate for the hostname — no dashboard clicks.
+# With `pattern = "api.tdoc.xyz"` (no wildcard), EVERY request to this
+# hostname routes to the Worker, which does its own internal path gating.
 [[routes]]
-pattern = "api.tdoc.xyz/*"
-zone_name = "tdoc.xyz"
+pattern = "api.tdoc.xyz"
+custom_domain = true
 
 # Observability — free tier, includes real-time logs (`wrangler tail`).
 [observability]

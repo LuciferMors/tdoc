@@ -41,11 +41,57 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // Block anything that isn't /v1/* or /docs or /openapi.json.
-    // Anything else returns 404 at the edge — the origin never sees it.
+    // Force HTTPS — matches the apex's behaviour and is what Mozilla
+    // Observatory's `redirection` test expects. Cloudflare's edge may
+    // deliver the HTTP request to the Worker without auto-upgrading.
+    if (url.protocol === "http:") {
+      url.protocol = "https:";
+      return Response.redirect(url.toString(), 301);
+    }
+
     const path = url.pathname;
+
+    // Serve `/` at the edge — no origin round-trip. Gives crawlers / scanners
+    // / curious humans a useful response + lets Mozilla Observatory scan the
+    // API with a valid 200 (it pulls headers from `/`).
+    if (path === "/") {
+      return new Response(
+        JSON.stringify(
+          {
+            service: "tdoc",
+            version: "0.1.0",
+            docs: "https://api.tdoc.xyz/docs",
+            openapi: "https://api.tdoc.xyz/openapi.json",
+            landing: "https://tdoc.xyz",
+            source: "https://github.com/LuciferMors/tdoc",
+          },
+          null,
+          2,
+        ),
+        {
+          status: 200,
+          headers: {
+            "content-type": "application/json; charset=utf-8",
+            "cache-control": "public, max-age=300",
+            "strict-transport-security":
+              "max-age=31536000; includeSubDomains; preload",
+            "content-security-policy":
+              "default-src 'none'; frame-ancestors 'none'",
+            "x-content-type-options": "nosniff",
+            "x-frame-options": "DENY",
+            "referrer-policy": "strict-origin-when-cross-origin",
+            "permissions-policy":
+              "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()",
+            "cross-origin-opener-policy": "same-origin",
+            "cross-origin-resource-policy": "same-origin",
+            "access-control-allow-origin": "*",
+          },
+        },
+      );
+    }
+
+    // Block anything else that isn't /v1/* or /docs or /openapi.json.
     const isAllowed =
-      path === "/" ||
       path === "/docs" ||
       path === "/redoc" ||
       path === "/openapi.json" ||
