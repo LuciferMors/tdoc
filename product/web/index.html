@@ -69,7 +69,8 @@
 
   --col-max: 1180px;
   --col-text: 36rem;
-  --gutter: clamp(1.25rem, 3.2vw, 2.5rem);
+  /* Wider gutter for comfortable breathing at all viewports. */
+  --gutter: clamp(1.5rem, 4vw, 4rem);
 }
 
 *, *::before, *::after { box-sizing: border-box; min-width: 0; }
@@ -114,12 +115,17 @@ a:hover{ text-decoration-color: var(--oxblood); color: var(--oxblood); }
 hr{ border: 0; border-top: 1px solid var(--rule); margin: 0; }
 button{ font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 
-/* Primary container — narrow column, left-aligned.            */
+/* Primary container — centered, capped at col-max, with real gutters.
+   Using max-width + padding-inline is bulletproof across every engine;
+   the earlier `width: min(A, 100% - B*2)` variant rendered with no
+   horizontal padding on some browsers/viewports. */
 .column{
-  width: min(var(--col-max), 100% - var(--gutter)*2);
+  width: 100%;
+  max-width: var(--col-max);
   margin-inline: auto;
-  /* Prevent any grid child with unbreakable content from blowing the column
-     open wider than it should be. */
+  padding-inline: var(--gutter);
+  /* Grid/flex children with unbreakable content (long code, hashes)
+     can't blow the column wider than it should be. */
   min-width: 0;
 }
 
