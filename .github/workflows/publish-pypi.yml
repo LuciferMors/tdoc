@@ -1,0 +1,93 @@
+name: Publish to PyPI
+
+# Trusted Publishing via OIDC — no API token, no secrets.
+# One-time setup (done once at https://pypi.org/manage/account/publishing/):
+#   Owner:           LuciferMors
+#   Repository:      tdoc
+#   Workflow name:   publish-pypi.yml
+#   Environment:     pypi
+#
+# After that, tagging `v0.1.0` (or any `v*`) triggers a publish.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build + check, but skip upload"
+        type: boolean
+        default: true
+
+concurrency:
+  group: publish-pypi-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build sdist + wheel
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install build tooling
+        run: |
+          python -m pip install --upgrade pip build twine
+
+      - name: Build sdist + wheel
+        run: python -m build
+
+      - name: Verify metadata
+        run: |
+          python -m twine check dist/*
+          ls -lh dist/
+
+      - name: Run tests against built wheel
+        run: |
+          python -m pip install "dist/"*.whl pytest
+          # Install optional extras so the full suite runs. Use the built wheel's extras pointer.
+          python -m pip install "$(ls dist/*.whl)[dev,crypto,pdf]"
+          python -m pytest tests/ product/tests/ -q
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 14
+
+  publish:
+    name: Upload to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    # Skip upload on manual dry-runs; real publish fires on tag push.
+    if: ${{ github.event_name == 'push' || github.event.inputs.dry_run == 'false' }}
+
+    environment:
+      name: pypi
+      url: https://pypi.org/project/axon-document/
+
+    permissions:
+      # Trusted Publishing requires id-token: write. That's the only permission used —
+      # no long-lived API token ever handled.
+      id-token: write
+
+    steps:
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # packages-dir defaults to dist/. No username, no password.
+          verbose: true

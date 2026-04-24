@@ -61,6 +61,27 @@ def test_manifest_hash_tamper_detected():
     ), "verify_document accepted a manifest with a zeroed content_hash"
 
 
+def test_validate_detects_render_hash_mismatch(tmp_path):
+    """validate() must reject a document whose manifest.render_hash disagrees with
+    serialize_axr(doc.render). Content hash alone is not enough — a tampered
+    render profile in a signed archive previously slipped past validate()."""
+    doc = _doc()
+    path = tmp_path / "d.axon"
+    encode_archive(doc, str(path))
+    loaded = decode_archive(str(path), verify=True)
+
+    # Round-trip OK.
+    assert validate(loaded).valid
+
+    # Corrupt the manifest's render_hash; validate() must flag it.
+    loaded.manifest.render_hash = "0" * 64
+    result = validate(loaded)
+    assert not result.valid, "validator accepted a zeroed manifest.render_hash"
+    assert any(
+        "render hash" in e.lower() for e in result.errors
+    ), f"validator didn't flag render-hash mismatch; errors: {result.errors}"
+
+
 def test_ed25519_sign_and_verify():
     pytest.importorskip("cryptography")
     from axon import sign_document_ed25519, verify_document_ed25519

@@ -1,0 +1,52 @@
+name: Feature request
+description: Propose a new feature or API change.
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: does this require a change to the AXON format spec itself, or only to the Python implementation / API? Spec changes have a higher bar.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What real-world document / workflow / integration is blocked today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: The API or behaviour you'd like to see. Include example usage.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What else did you try? Why wasn't it enough?
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - Python library only (no spec change)
+        - tdoc API only (no library / spec change)
+        - AXON format spec change (breaking)
+        - AXON format spec change (additive)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submit checks
+      options:
+        - label: I searched existing issues and discussions.
+          required: true
+        - label: I've read AXON_Format_Specification.txt if this touches the format.
+          required: false

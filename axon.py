@@ -1131,14 +1131,18 @@ def validate(doc: AxonDocument) -> ValidationResult:
             errors.append(f"Duplicate node id: '{node_id}'")
         seen.add(node_id)
 
-    # Hash integrity check — content_hash only for now; render_hash validation
-    # is a known gap (see errors_log.md).
+    # Hash integrity check — both content and render hashes.
     content_axc = serialize_axc(doc.content)
     if m.content_hash:
-        computed_ch = hash_text(content_axc)
-        if computed_ch != m.content_hash:
+        if hash_text(content_axc) != m.content_hash:
             errors.append(
                 "Content hash mismatch — document may be modified since encoding"
+            )
+    if m.render_hash:
+        render_axr = serialize_axr(doc.render)
+        if hash_text(render_axr) != m.render_hash:
+            errors.append(
+                "Render hash mismatch — render profile may be modified since encoding"
             )
 
     return ValidationResult(valid=len(errors) == 0, errors=errors, warnings=warnings)

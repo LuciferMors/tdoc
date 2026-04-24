@@ -1,0 +1,14 @@
+{
+  "name": "tdoc-api-proxy",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cloudflare Worker reverse-proxying api.tdoc.xyz to the Hugging Face Space backend.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^3.78.0"
+  }
+}

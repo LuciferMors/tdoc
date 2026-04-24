@@ -17,14 +17,25 @@ Think of it like `.png` vs PNG: one is the file extension users see, the other i
 
 ## Status
 
-Early-alpha reference. Spec is complete; implementation covers most of it and ships with 27 tests covering the load-bearing invariants.
+Early-alpha reference. Spec is complete; implementation covers most of it and ships with **50 passing tests** (32 format + 18 API) covering the load-bearing invariants. Landing is live at https://tdoc.xyz with Mozilla Observatory **A+ · 125/125 · 10/10 tests**.
 
-## Install (editable)
+## Install
+
+From PyPI (once published):
+
+```bash
+pip install axon-document           # → import axon
+pip install axon-document[crypto]   # + Ed25519 signatures
+pip install axon-document[pdf]      # + PyMuPDF PDF ingest
+pip install axon-document[all]      # everything
+```
+
+From source (editable):
 
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -e ".[dev,crypto]"
-.venv/bin/pytest
+.venv/bin/pytest tests/ product/tests/
 ```
 
 Optional extras: `[pdf]`, `[fastjson]`, `[crypto]`, `[mathml]`, `[all]`.
@@ -64,7 +75,7 @@ As of the current test suite (`pytest tests/`):
 | **ZIP-bomb + path-traversal defenses on decode** | ✅ |
 | **Spec conformance (accessibility warnings, dup-ids, hash mismatch)** | ✅ |
 
-**27 tests, 0 xfail** for the format. **8 additional tests** for the `tdoc` API service.
+**32 tests, 0 xfail** for the format. **18 additional tests** for the `tdoc` API service (auth, quotas, security headers, rate limits). **50 total, all green**.
 
 ## License
 

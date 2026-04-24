@@ -1,0 +1,19 @@
+name = "tdoc-api-proxy"
+main = "src/worker.js"
+compatibility_date = "2026-04-01"
+
+# Bind the Worker to api.tdoc.xyz/* so every request under that subdomain
+# hits the Worker, which reverse-proxies to the HF Space.
+#
+# `zone_name = "tdoc.xyz"` tells Wrangler which zone to touch.
+# `pattern` is the URL pattern that triggers the Worker.
+[[routes]]
+pattern = "api.tdoc.xyz/*"
+zone_name = "tdoc.xyz"
+
+# Observability — free tier, includes real-time logs (`wrangler tail`).
+[observability]
+enabled = true
+
+# No KV / R2 / D1 bindings — we're purely a stateless proxy today.
+# Add them here when we front the HF Space with caching or edge-side rate limiting.

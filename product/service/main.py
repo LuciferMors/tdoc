@@ -26,7 +26,7 @@ from typing import Optional
 
 from fastapi import FastAPI, Header, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 # Make the top-level `axon.py` importable (product/ is a subdir of the repo).
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -61,6 +61,25 @@ from product.service.security import (  # noqa: E402
     take_key_token,
     unhandled_exception_handler,
 )
+
+# Optional: Sentry error monitoring. Activates only when SENTRY_DSN is set
+# AND sentry-sdk is installed. Missing package or missing env → silent no-op.
+_SENTRY_DSN = os.environ.get("SENTRY_DSN")
+if _SENTRY_DSN:
+    try:
+        import sentry_sdk  # type: ignore[import-not-found]
+
+        sentry_sdk.init(
+            dsn=_SENTRY_DSN,
+            traces_sample_rate=float(
+                os.environ.get("SENTRY_TRACES_SAMPLE_RATE", "0.1")
+            ),
+            send_default_pii=False,  # never forward auth headers / bodies
+            environment=os.environ.get("TDOC_ENV", "production"),
+            release=os.environ.get("TDOC_RELEASE"),
+        )
+    except ImportError:
+        pass  # sentry-sdk not installed — no-op
 
 app = FastAPI(
     title="tdoc API",
@@ -105,15 +124,50 @@ class StructureResponse(BaseModel):
     nodes: int
     warnings: list[str]
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "document_id": "doc_01J8XYZABC",
+                "content_hash": "c7a1f9e6…",
+                "render_hash": "3b8d40b2…",
+                "axc": '@section [id="s1"]:\n  @heading [level=1]:\n    Introduction\n',
+                "nodes": 142,
+                "warnings": ["@figure missing alt-text (id=fig-3)"],
+            }
+        }
+    )
+
 
 class QueryRequest(BaseModel):
     aql: str
     axc: str  # The AXON content notation to run the query against.
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "aql": "SELECT text FROM cell WHERE data-type = 'pvalue' AND value < 0.05",
+                "axc": '@section [id="results"]:\n  @table [id="t1"]:\n    …',
+            }
+        }
+    )
+
 
 class QueryResponse(BaseModel):
     count: int
     results: list[dict] | list[str]
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "count": 3,
+                "results": [
+                    {"text": "0.003"},
+                    {"text": "0.011"},
+                    {"text": "0.049"},
+                ],
+            }
+        }
+    )
 
 
 class SignRequest(BaseModel):
@@ -121,9 +175,38 @@ class SignRequest(BaseModel):
     render_axr: Optional[str] = None
     manifest: dict
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "axc": '@section [id="s1"]:\n  @paragraph:\n    Signed content.\n',
+                "render_axr": "",
+                "manifest": {
+                    "document_id": "doc_01J8XYZABC",
+                    "title": "Signed Paper",
+                    "document_type": "article.research",
+                    "content_hash": "c7a1f9e6…",
+                    "render_hash": "3b8d40b2…",
+                },
+            }
+        }
+    )
+
 
 class SignResponse(BaseModel):
     signature: dict
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "signature": {
+                    "type": "ed25519",
+                    "signature": "6f8a…64-byte hex…",
+                    "public_key": "9c1b…32-byte hex…",
+                    "covered_fields": ["manifest", "content_hash", "render_hash"],
+                }
+            }
+        }
+    )
 
 
 class VerifyRequest(BaseModel):
@@ -132,9 +215,30 @@ class VerifyRequest(BaseModel):
     manifest: dict
     signature: dict
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "axc": '@section [id="s1"]:\n  @paragraph:\n    Signed content.\n',
+                "render_axr": "",
+                "manifest": {
+                    "document_id": "doc_01J8XYZABC",
+                    "content_hash": "c7a1f9e6…",
+                    "render_hash": "3b8d40b2…",
+                },
+                "signature": {
+                    "type": "ed25519",
+                    "signature": "6f8a…64-byte hex…",
+                    "public_key": "9c1b…32-byte hex…",
+                },
+            }
+        }
+    )
+
 
 class VerifyResponse(BaseModel):
     valid: bool
+
+    model_config = ConfigDict(json_schema_extra={"example": {"valid": True}})
 
 
 @app.get("/v1/healthz")

@@ -5,25 +5,27 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "axon-document"
 version = "0.1.0"
-description = "AXON document format — deterministic semantic document archive with typed content, render profiles, and cryptographic integrity."
+description = "AXON document format — typed, deterministic, signable document archives. Powers tdoc (tdoc.xyz)."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
 authors = [
-    { name = "Independent Frontier Research" },
+    { name = "RishiArunShivhare" },
 ]
-keywords = ["document", "format", "semantic", "deterministic", "archive", "axon"]
+keywords = ["document", "format", "semantic", "deterministic", "archive", "axon", "tdoc", "pdf", "llm", "rag"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Text Processing :: Markup",
     "Topic :: Scientific/Engineering",
+    "Typing :: Typed",
 ]
 dependencies = []
 
@@ -47,7 +49,11 @@ dev = [
 axon = "axon:main"
 
 [project.urls]
-Specification = "https://github.com/axon-format/spec"
+Homepage = "https://tdoc.xyz"
+Source = "https://github.com/LuciferMors/tdoc"
+Issues = "https://github.com/LuciferMors/tdoc/issues"
+Documentation = "https://github.com/LuciferMors/tdoc#readme"
+Specification = "https://github.com/LuciferMors/tdoc/blob/main/AXON_Format_Specification.txt"
 
 [tool.setuptools]
 py-modules = ["axon"]

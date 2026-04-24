@@ -1,0 +1,48 @@
+name: Sync to Hugging Face Space
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: sync-to-hf
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    # Skip silently until the HF_TOKEN secret is configured. Keeps the workflow
+    # green on forks + during initial bootstrap.
+    if: ${{ secrets.HF_TOKEN != '' }}
+
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: false
+
+      - name: Stage HF-specific Space README
+        # HF Spaces require a README.md with YAML front-matter at the repo root.
+        # Our project README is Markdown without front-matter; we need to swap
+        # it for the HF-specific one under deploy/huggingface/ before pushing.
+        run: |
+          set -euo pipefail
+          cp deploy/huggingface/README.md README.md
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git diff --cached --quiet || git commit -m "hf: apply Space README front-matter"
+
+      - name: Push to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_USER: LuciferMors
+          HF_SPACE: tdoc
+        run: |
+          set -euo pipefail
+          git remote add hf "https://${HF_USER}:${HF_TOKEN}@huggingface.co/spaces/${HF_USER}/${HF_SPACE}"
+          # Force push because we rewrite the README on every sync; the HF Space
+          # is a mirror, not an independent branch.
+          git push --force hf HEAD:main

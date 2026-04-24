@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/LuciferMors/tdoc/security/advisories/new
+    about: Report privately via GitHub Security Advisories. See SECURITY.md.
+  - name: Sales / enterprise inquiries
+    about: Email hello@tdoc.xyz.
+    url: mailto:hello@tdoc.xyz

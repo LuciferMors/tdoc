@@ -1,0 +1,66 @@
+name: Bug report
+description: Something is broken or behaves unexpectedly.
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report. A good bug report saves everyone rounds of back-and-forth.
+
+  - type: input
+    id: version
+    attributes:
+      label: tdoc / axon version
+      description: Output of `python -c "import axon; print(axon.__version__ if hasattr(axon,'__version__') else 'dev')"`, or the git commit sha.
+      placeholder: "0.1.0 or 02e80ec"
+    validations:
+      required: true
+
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: "3.12.3"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: "macOS 14.5 / Ubuntu 22.04 / Docker python:3.12-slim"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, what did you actually see?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: Smallest code snippet, CLI command, or input file that triggers the bug. If the input is a PDF / AXC, attach it.
+      render: python
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / traceback
+      render: shell
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submit checks
+      options:
+        - label: I searched existing issues for duplicates.
+          required: true
+        - label: The bug reproduces on a clean `pip install -e .` checkout.
+          required: false
