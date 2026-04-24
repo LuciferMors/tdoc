@@ -72,8 +72,14 @@
   --gutter: clamp(1.25rem, 3.2vw, 2.5rem);
 }
 
-*, *::before, *::after { box-sizing: border-box; }
-html{ -webkit-text-size-adjust: 100%; hanging-punctuation: first last; }
+*, *::before, *::after { box-sizing: border-box; min-width: 0; }
+html{
+  -webkit-text-size-adjust: 100%;
+  hanging-punctuation: first last;
+  /* Safeguard against any single child widening the document. Individual
+     code blocks still scroll internally via overflow-x: auto. */
+  overflow-x: hidden;
+}
 
 body{
   margin: 0;
@@ -87,11 +93,19 @@ body{
   font-feature-settings: "onum", "kern";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* Long unbreakable strings (URLs, hashes, "Supercalifragilisticexpialidocious")
+     must wrap on narrow widths rather than push past the page edge. */
+  overflow-wrap: break-word;
+  word-wrap: break-word;
   /* Only transition the two colours that actually swap per theme. Avoid
      transitioning everything — causes jank and a stale flash on toggle. */
   transition: background-color 0.35s ease, color 0.35s ease;
 }
 ::selection{ background: var(--oxblood); color: var(--paper); }
+
+/* Defensive — every media + pre + table + figure stays inside its parent. */
+img, svg, video, pre, table, figure{ max-width: 100%; }
+pre{ overflow-x: auto; }
 
 a{ color: var(--ink); text-decoration: underline; text-decoration-thickness: 0.5px;
    text-underline-offset: 0.25em; text-decoration-color: var(--rule); }
@@ -104,6 +118,9 @@ button{ font: inherit; color: inherit; background: none; border: 0; padding: 0; 
 .column{
   width: min(var(--col-max), 100% - var(--gutter)*2);
   margin-inline: auto;
+  /* Prevent any grid child with unbreakable content from blowing the column
+     open wider than it should be. */
+  min-width: 0;
 }
 
 /* ─── M A S T H E A D ─────────────────────────────────────── */
@@ -115,9 +132,51 @@ button{ font: inherit; color: inherit; background: none; border: 0; padding: 0; 
 .masthead__grid{
   display: grid;
   grid-template-columns: 1fr auto;
+  grid-template-areas: "title meta";
   align-items: end;
   gap: 2rem;
 }
+.masthead__title{ grid-area: title; }
+.masthead__meta{ grid-area: meta; }
+
+/* Hamburger — drawn with three hairlines, animates to X on open.
+   Hidden on desktop. Real <button> so the keyboard path works. */
+.burger{
+  grid-area: burger;
+  display: none;                 /* desktop: hidden */
+  width: 26px;
+  height: 20px;
+  padding: 0;
+  position: relative;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  align-self: center;
+  justify-self: end;
+}
+.burger:focus-visible{
+  outline: 1px solid var(--oxblood);
+  outline-offset: 6px;
+}
+.burger span{
+  display: block;
+  width: 100%;
+  height: 1.2px;
+  background: var(--ink);
+  position: absolute;
+  left: 0;
+  transition:
+    transform 0.3s cubic-bezier(0.2, 0.7, 0.3, 1),
+    opacity 0.18s ease,
+    top 0.3s ease,
+    background-color 0.3s ease;
+}
+.burger span:nth-child(1){ top: 0; }
+.burger span:nth-child(2){ top: 50%; transform: translateY(-50%); }
+.burger span:nth-child(3){ top: calc(100% - 1.2px); }
+.burger[aria-expanded="true"] span:nth-child(1){ top: 50%; transform: translateY(-50%) rotate(45deg); }
+.burger[aria-expanded="true"] span:nth-child(2){ opacity: 0; }
+.burger[aria-expanded="true"] span:nth-child(3){ top: 50%; transform: translateY(-50%) rotate(-45deg); }
 .masthead__title{
   font-family: var(--serif);
   font-weight: 500;
@@ -163,10 +222,45 @@ button{ font: inherit; color: inherit; background: none; border: 0; padding: 0; 
 .theme-toggle .sep{ color: var(--ink-4); user-select: none; }
 .masthead__meta a:hover{ color: var(--oxblood); text-decoration: underline; }
 
-@media (max-width: 600px){
+/* Mobile — switch to burger drawer. Title + burger on one row, the rest
+   collapses into an animated drawer that expands below. */
+@media (max-width: 720px){
   .masthead{ padding: 1.5rem 0 1rem; margin-bottom: 2rem; }
-  .masthead__grid{ grid-template-columns: 1fr; gap: 0.75rem; }
-  .masthead__meta{ text-align: left; }
+  .masthead__grid{
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "title  burger"
+      "meta   meta";
+    align-items: center;
+    gap: 0 0.75rem;
+  }
+  .burger{ display: block; }
+  .masthead__meta{
+    text-align: left;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+    border-top: 1px solid transparent;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: flex-start;
+    transition:
+      max-height 0.42s cubic-bezier(0.2, 0.7, 0.3, 1),
+      opacity 0.25s ease,
+      padding 0.3s ease,
+      margin 0.3s ease,
+      border-color 0.3s ease;
+  }
+  .masthead[data-open="true"] .masthead__meta{
+    max-height: 22rem;
+    opacity: 1;
+    padding-top: 1.25rem;
+    margin-top: 1rem;
+    border-top-color: var(--rule);
+  }
 }
 
 /* ─── H E R O ─────────────────────────────────────────────── */
@@ -486,6 +580,20 @@ button{ font: inherit; color: inherit; background: none; border: 0; padding: 0; 
 
 @media (max-width: 880px){ .spec{ grid-template-columns: 1fr; } }
 
+/* On narrow widths, shrink the mono code a notch and allow wrapping so
+   the spec specimen stays readable without a big horizontal scroll. */
+@media (max-width: 640px){
+  .spec__code{
+    font-size: 0.72rem;
+    line-height: 1.5;
+    padding: 1rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .figure__sample{ font-size: 0.72rem; line-height: 1.5; }
+  .figure__cell{ padding: 1.25rem 1rem 1.5rem; min-height: 0; }
+}
+
 /* ─── R A T E S   ( colophon-style pricing ) ──────────────── */
 .rates{
   padding: clamp(3rem, 8vw, 6rem) 0;
@@ -658,10 +766,13 @@ button{ font: inherit; color: inherit; background: none; border: 0; padding: 0; 
 
 <body>
 
-<header class="masthead">
+<header class="masthead" data-open="false">
   <div class="column masthead__grid">
     <h1 class="masthead__title"><a href="#">tdoc<em>.</em></a></h1>
-    <div class="masthead__meta">
+    <button class="burger" type="button" aria-expanded="false" aria-controls="masthead-drawer" aria-label="Menu">
+      <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
+    </button>
+    <div class="masthead__meta" id="masthead-drawer">
       <div><a href="#letter">About</a> · <a href="#format">Format</a> · <a href="#rates">Rates</a> · <a href="https://github.com/LuciferMors/tdoc" rel="noopener">Source</a></div>
       <div>
         <a href="mailto:hello@tdoc.xyz">hello@tdoc.xyz</a>
