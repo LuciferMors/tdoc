@@ -29,48 +29,47 @@
    Night: aged leather at low light, library after hours
    ──────────────────────────────────────────────────────────── */
 
-:root, [data-theme="light"]{
-  --paper:         #fafaf7;
-  --paper-2:       #f2eee4;
-  --ink:           #0c0c0c;
-  --ink-2:         #2b2a27;
-  --ink-3:         #55524d;
-  --ink-4:         #8a8680;
-  --rule:          #c8c3b7;
-  --rule-soft:     #e6e1d4;
-  --oxblood:       #7a0c1a;
-  --oxblood-wash:  #7a0c1a10;
-  --shadow-tint:   rgba(12, 12, 12, 0);
-}
+/* ── Type + layout constants (theme-invariant) ── */
+:root{
+  --serif: "Newsreader", "Iowan Old Style", Baskerville, Georgia, serif;
+  --mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
-[data-theme="dark"]{
-  /* Not pure black. Warm near-black — the colour of bound leather
-     lit by a reading lamp. The surface lifts a touch in paper-2 so
-     code blocks sit on their own plane. */
-  --paper:         #141310;
-  --paper-2:       #1c1a15;
-  /* Cream ink, graded down for secondary + muted tiers. Cooler at
-     the muted end so mono labels don't glow. */
-  --ink:           #efe9d9;
-  --ink-2:         #c6c0b1;
-  --ink-3:         #8a8577;
-  --ink-4:         #5a574f;
-  --rule:          #2c2a24;
-  --rule-soft:     #221f1a;
-  /* Oxblood lifted for contrast on dark, still in the burgundy family —
-     not coral, not candy. Tested for AA contrast on #141310. */
-  --oxblood:       #d85565;
-  --oxblood-wash:  #d8556518;
-  --shadow-tint:   rgba(0, 0, 0, 0.25);
-}
-
-  --serif:  "Newsreader", "Iowan Old Style", Baskerville, Georgia, serif;
-  --mono:   "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
-
-  --col-max: 1180px;
+  --col-max:  1180px;
   --col-text: 36rem;
-  /* Wider gutter for comfortable breathing at all viewports. */
-  --gutter: clamp(1.5rem, 4vw, 4rem);
+  --gutter:   clamp(1.5rem, 4vw, 4rem);
+}
+
+/* ── Light theme (default) ── */
+:root,
+[data-theme="light"]{
+  --paper:        #fafaf7;
+  --paper-2:      #f2eee4;
+  --ink:          #0c0c0c;
+  --ink-2:        #2b2a27;
+  --ink-3:        #55524d;
+  --ink-4:        #8a8680;
+  --rule:         #c8c3b7;
+  --rule-soft:    #e6e1d4;
+  --oxblood:      #7a0c1a;
+  --oxblood-wash: #7a0c1a10;
+  --shadow-tint:  rgba(12, 12, 12, 0);
+}
+
+/* ── Dark theme — aged leather at low light ── */
+[data-theme="dark"]{
+  --paper:        #141310;
+  --paper-2:      #1c1a15;
+  --ink:          #efe9d9;
+  --ink-2:        #c6c0b1;
+  --ink-3:        #8a8577;
+  --ink-4:        #5a574f;
+  --rule:         #2c2a24;
+  --rule-soft:    #221f1a;
+  /* Oxblood lifted for AA contrast on the dark background — still in
+     the burgundy family, not coral, not candy. */
+  --oxblood:      #d85565;
+  --oxblood-wash: #d8556518;
+  --shadow-tint:  rgba(0, 0, 0, 0.25);
 }
 
 *, *::before, *::after { box-sizing: border-box; min-width: 0; }
