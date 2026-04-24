@@ -12,11 +12,24 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    # Skip silently until the HF_TOKEN secret is configured. Keeps the workflow
-    # green on forks + during initial bootstrap.
-    if: ${{ secrets.HF_TOKEN != '' }}
+    # Only run on the canonical repo — forks don't have HF_TOKEN and
+    # shouldn't try to push to a Space they don't own. GitHub Actions
+    # does NOT allow `secrets` context in job-level `if:`; `github.repository`
+    # is the safe alternative.
+    if: github.repository == 'LuciferMors/tdoc'
 
     steps:
+      - name: Verify HF_TOKEN secret is configured
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "::error::HF_TOKEN repository secret is not set. Add it at"
+            echo "::error::https://github.com/LuciferMors/tdoc/settings/secrets/actions"
+            exit 1
+          fi
+          echo "HF_TOKEN present (${#HF_TOKEN} chars)"
+
       - name: Checkout full history
         uses: actions/checkout@v4
         with:
