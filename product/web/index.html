@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>tdoc — Typed, queryable, signable documents as an API</title>
+<meta name="description" content="Turn PDFs, DOCX and HTML into typed AXON trees your AI can actually reason over. Every number has a declared type. Every document carries a cryptographic signature. Shipped as a REST API." />
+<meta property="og:title" content="tdoc — Documents as typed, signable data" />
+<meta property="og:description" content="Your LLM can finally read tables, math, and data. One REST call." />
+<meta name="twitter:card" content="summary_large_image" />
+<style>
+  :root {
+    --bg: #0b0d10;
+    --fg: #e7edf3;
+    --mut: #9aa4ad;
+    --accent: #8b5cf6;
+    --accent2: #22d3ee;
+    --card: #14171c;
+    --line: #1e232a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: ui-sans-serif, -apple-system, system-ui, Segoe UI, Roboto, sans-serif; line-height: 1.55; }
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  header, main, footer { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1.25rem; }
+  header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+  .logo { font-weight: 700; letter-spacing: -0.01em; font-size: 1.25rem; }
+  .logo span { color: var(--accent); }
+  nav a { margin-left: 1.25rem; color: var(--mut); font-size: 0.95rem; }
+  nav a:hover { color: var(--fg); }
+  .hero { padding: 4rem 1.25rem 2rem; }
+  .hero h1 { font-size: clamp(2rem, 5vw, 3.4rem); margin: 0 0 1rem; letter-spacing: -0.02em; }
+  .hero h1 em { font-style: normal; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero p { font-size: 1.15rem; color: var(--mut); max-width: 60ch; }
+  .cta { display: inline-flex; gap: 0.75rem; margin-top: 1.25rem; flex-wrap: wrap; }
+  .btn { padding: 0.75rem 1.25rem; border-radius: 0.5rem; border: 1px solid var(--line); background: var(--card); color: var(--fg); font-weight: 600; cursor: pointer; display: inline-block; }
+  .btn.primary { background: linear-gradient(135deg, var(--accent), #6d28d9); border-color: transparent; }
+  .badge { display: inline-block; margin-bottom: 1rem; padding: 0.25rem 0.65rem; font-size: 0.75rem; color: var(--accent2); border: 1px solid var(--accent2); border-radius: 999px; opacity: 0.9; }
+  section { padding: 3rem 0; border-top: 1px solid var(--line); }
+  section h2 { font-size: 1.6rem; margin: 0 0 1rem; letter-spacing: -0.01em; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 0.75rem; padding: 1.25rem; }
+  .card h3 { margin: 0 0 0.5rem; font-size: 1rem; }
+  .card p { margin: 0; color: var(--mut); font-size: 0.95rem; }
+  pre { background: #0f1217; border: 1px solid var(--line); padding: 1rem 1.25rem; border-radius: 0.5rem; overflow-x: auto; font-size: 0.9rem; }
+  pre code { color: #cdd6f4; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+  .price { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1rem; }
+  .tier { background: var(--card); border: 1px solid var(--line); border-radius: 0.75rem; padding: 1.5rem; }
+  .tier.featured { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .tier h3 { margin: 0 0 0.25rem; font-size: 1.1rem; }
+  .tier .amount { font-size: 2rem; font-weight: 700; margin: 0.5rem 0; }
+  .tier .amount small { font-size: 0.85rem; color: var(--mut); font-weight: 400; }
+  .tier ul { padding: 0 0 0 1.1rem; margin: 0.5rem 0 1rem; color: var(--mut); font-size: 0.95rem; }
+  .tier ul li { margin: 0.25rem 0; }
+  footer { color: var(--mut); font-size: 0.85rem; text-align: center; border-top: 1px solid var(--line); margin-top: 3rem; }
+  .kpi { display: flex; gap: 2rem; flex-wrap: wrap; color: var(--mut); font-size: 0.95rem; margin-top: 1.5rem; }
+  .kpi b { color: var(--fg); font-weight: 700; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">.<span>tdoc</span></div>
+  <nav>
+    <a href="#features">Features</a>
+    <a href="#api">API</a>
+    <a href="#pricing">Pricing</a>
+    <a href="https://github.com/">Open source</a>
+  </nav>
+</header>
+
+<main>
+  <section class="hero" style="border-top: 0; padding-top: 3rem;">
+    <span class="badge">Document infrastructure for the AI era</span>
+    <h1>Your LLM can finally read <em>tables, math, and data</em>.</h1>
+    <p>
+      tdoc turns any PDF, DOCX, or HTML into a <code>.tdoc</code> — a typed, queryable,
+      signable document file. Every number carries a declared type. Every file carries an
+      Ed25519 signature. Every archive is byte-deterministic — same input, same bytes out,
+      always. Ship in a single REST call.
+    </p>
+    <div class="cta">
+      <a class="btn primary" href="#pricing">Start free</a>
+      <a class="btn" href="#api">Read the API</a>
+      <a class="btn" href="https://github.com/">Self-host</a>
+    </div>
+    <div class="kpi">
+      <div><b>&lt; 2s</b> median latency, 10-page PDF</div>
+      <div><b>100 docs/mo</b> free, forever</div>
+      <div><b>Ed25519</b> signatures, zero wall-clock drift</div>
+    </div>
+  </section>
+
+  <section id="features">
+    <h2>What you get</h2>
+    <div class="grid">
+      <div class="card"><h3>Typed every node</h3><p>Cells declare <code>data-type="pvalue"</code> / <code>measure</code> / <code>currency</code>. Your downstream code never guesses.</p></div>
+      <div class="card"><h3>Query with AQL</h3><p>"Find every p-value &lt; 0.05 in this 300-page paper" — one line, no LLM needed.</p></div>
+      <div class="card"><h3>Signed &amp; verifiable</h3><p>Ed25519 over canonical bytes. Tamper once, verification fails forever.</p></div>
+      <div class="card"><h3>Byte-deterministic</h3><p>Same input → same output, guaranteed. Hash it, sign it, audit it.</p></div>
+      <div class="card"><h3>Accessibility built in</h3><p>alt-text coverage, equation descriptions, reading order — not an afterthought.</p></div>
+      <div class="card"><h3>Open format</h3><p>Run the SDK offline. Your data never needs to stay on our servers.</p></div>
+    </div>
+  </section>
+
+  <section id="api">
+    <h2>Two lines to structured data</h2>
+<pre><code>curl -X POST https://api.tdoc.xyz/v1/structure \
+  -H "Authorization: Bearer $TDOC_KEY" \
+  -F "file=@paper.pdf" \
+  -F "title=My Paper"</code></pre>
+    <p style="color: var(--mut); margin-top: 1rem;">
+      Returns an AXON document tree. Run <code>/v1/query</code> for AQL, <code>/v1/sign</code> for
+      Ed25519, <code>/v1/verify</code> to validate a third-party archive. Full OpenAPI spec at
+      <code>/docs</code>.
+    </p>
+  </section>
+
+  <section id="pricing">
+    <h2>Pricing</h2>
+    <p style="color: var(--mut);">Start free. No credit card. Upgrade when your project does.</p>
+    <div class="price">
+      <div class="tier">
+        <h3>Free</h3>
+        <div class="amount">$0<small>/mo</small></div>
+        <ul>
+          <li>100 documents / month</li>
+          <li>All parsing features</li>
+          <li>AQL queries included</li>
+          <li>Community support</li>
+        </ul>
+        <a class="btn" href="#signup">Get API key</a>
+      </div>
+      <div class="tier">
+        <h3>Pro</h3>
+        <div class="amount">$29<small>/mo</small></div>
+        <ul>
+          <li>2,000 documents / month</li>
+          <li>Email support</li>
+          <li>No hard overage — upgrade anytime</li>
+          <li><s>Signing</s> (Team+)</li>
+        </ul>
+        <a class="btn" href="#checkout-pro">Start Pro</a>
+      </div>
+      <div class="tier featured">
+        <h3>Team</h3>
+        <div class="amount">$99<small>/mo</small></div>
+        <ul>
+          <li>10K documents / month</li>
+          <li>Ed25519 signing + verification</li>
+          <li>Priority email (24h SLA)</li>
+          <li>Overage: $0.02 / doc</li>
+        </ul>
+        <a class="btn primary" href="#checkout-team">Start Team</a>
+      </div>
+      <div class="tier">
+        <h3>Scale</h3>
+        <div class="amount">$499<small>/mo</small></div>
+        <ul>
+          <li>100K documents / month</li>
+          <li>Self-hosted option</li>
+          <li>Slack support channel</li>
+          <li>Overage: $0.01 / doc</li>
+        </ul>
+        <a class="btn" href="mailto:hello@tdoc.xyz">Talk to us</a>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Why now</h2>
+    <p style="color: var(--mut); max-width: 70ch;">
+      Every AI team is losing 20–40% of document quality to broken PDF ingestion.
+      Tables become strings. Equations become gibberish. P-values lose their type.
+      tdoc gives LLMs the same structured view a database has —
+      so your agents can cite a number, not just see it.
+    </p>
+  </section>
+</main>
+
+<footer>
+  <p>tdoc · Built on the open AXON format · <code>.tdoc</code> is a registered file extension · Apache-2.0 · Made in India 🇮🇳</p>
+</footer>
+</body>
+</html>

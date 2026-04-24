@@ -1,0 +1,778 @@
+AXON DOCUMENT FORMAT
+Adaptive eXtensible Object Notation for Documents
+Complete Specification v1.0
+Author: Independent Frontier Research
+Status: Complete Design Draft
+
+
+═══════════════════════════════════════════════════════════════════
+PART ONE: PHILOSOPHY AND FIRST PRINCIPLES
+═══════════════════════════════════════════════════════════════════
+
+A document is not a picture of text. A document is a structured container of meaning that must be renderable, extractable, diffable, queryable, signable, portable, interactive, and natively comprehensible to both humans and machines without any intermediary translation step.
+
+PDF solved the problem of the 1990s: how do you guarantee that a printed page looks identical everywhere. It solved it well. The cost was that the document became a photograph. A photograph of meaning is not meaning.
+
+HTML solved the problem of the early web: how do you deliver hyperlinked content across heterogeneous devices. It solved it partially. The cost was that layout became a full-time engineering discipline separate from content, and the format carried no native concept of document identity, versioning, or finality.
+
+DOCX solved the problem of the office: how do you give non-technical users an editable document with rich formatting. The cost was a proprietary XML dialect that no one reads directly, that breaks across versions, and that contains no semantic information beyond visual intent.
+
+Markdown solved the problem of developer documentation: how do you write content that is readable as raw text and renderable as formatted output. The cost was minimal expressiveness. Markdown cannot represent a table of clinical data, a mathematical proof, a signed legal instrument, or a multi-layer figure with annotations.
+
+None of these formats were designed for the era in which documents must be:
+
+- Natively parsed by large language models without lossy conversion pipelines
+- Verified for integrity and authorship without third-party certification authorities
+- Diffed at the semantic level, not the character level
+- Rendered identically on a wall-mounted display, a phone screen, a screen reader, a thermal printer, and a braille terminal
+- Edited by humans and machines simultaneously with conflict resolution
+- Self-describing enough that any compliant reader in any future decade can reconstruct the author's intent without side-channel information
+
+AXON is designed for this era. It makes no compromises toward backward compatibility with PDF, DOCX, or HTML. It is a clean break, justified by the observation that every major computing platform transition in history was ultimately accomplished by formats that did not try to be compatible with their predecessors at the cost of correctness.
+
+
+═══════════════════════════════════════════════════════════════════
+PART TWO: CONTAINER ARCHITECTURE
+═══════════════════════════════════════════════════════════════════
+
+An AXON document is a deterministic ZIP-compatible archive with the extension .axon. The internal structure is fixed and mandatory. Every AXON-compliant reader must reject archives that violate this structure.
+
+Internal structure of a valid .axon archive:
+
+  manifest.json          — Required. Identity, versioning, and dependency declarations.
+  content/               — Required. The semantic content tree.
+    document.axc         — Required. The root content file in AXON Content notation.
+    fragments/           — Optional. Included fragments and sub-documents.
+  render/                — Required. The render instruction set.
+    default.axr          — Required. Default render profile.
+    profiles/            — Optional. Named render profiles (print, screen, braille, etc.).
+  assets/                — Optional. Embedded binary assets.
+    images/
+    fonts/
+    data/
+  signatures/            — Optional. Cryptographic signature blocks.
+    author.sig
+    institution.sig
+  history/               — Optional. Version history in compact delta notation.
+    delta_001.axd
+    delta_002.axd
+  queries/               — Optional. Pre-declared semantic queries over the content tree.
+  annotations/           — Optional. Layered annotation sets (peer review, comments, etc.).
+  metadata/              — Required. Dublin Core plus AXON extensions.
+    core.json
+    provenance.json
+    accessibility.json
+
+The archive is produced deterministically: given identical inputs, two independent AXON encoders must produce byte-for-byte identical archives. This property is required for cryptographic verification and for deduplication in document management systems. It is achieved by fixing sort order of all JSON keys lexicographically and fixing all timestamp representations to RFC 3339 with UTC offset.
+
+
+═══════════════════════════════════════════════════════════════════
+PART THREE: THE MANIFEST
+═══════════════════════════════════════════════════════════════════
+
+The manifest.json file is the authoritative identity record of the document. It contains:
+
+{
+  "axon_version": "1.0",
+  "document_id": "<UUID v7>",
+  "document_type": "<see type registry>",
+  "title": "<string>",
+  "language": "<BCP 47 language tag>",
+  "created": "<RFC 3339 timestamp>",
+  "modified": "<RFC 3339 timestamp>",
+  "revision": "<integer, monotonically increasing from 1>",
+  "content_hash": "<SHA3-256 of content/document.axc>",
+  "render_hash": "<SHA3-256 of render/default.axr>",
+  "dependencies": [
+    {
+      "id": "<document_id of dependency>",
+      "type": "embed | reference | citation",
+      "hash": "<SHA3-256 of dependency at time of inclusion>"
+    }
+  ],
+  "authors": [
+    {
+      "name": "<string>",
+      "identifier": "<ORCID | DID | email | null>",
+      "role": "<author | editor | contributor | reviewer>",
+      "contribution": "<free text description>"
+    }
+  ],
+  "license": "<SPDX expression or custom URI>",
+  "render_profiles": ["default", "print", "screen", "braille"],
+  "accessibility": {
+    "alt_text_coverage": "<fraction 0-1>",
+    "reading_order_declared": true,
+    "language_switches_marked": true
+  }
+}
+
+The document_id uses UUID v7 because v7 is time-ordered, which means documents sort chronologically by ID in any index that supports lexicographic ordering. This is not a cosmetic choice. It means that a filesystem-level listing of document IDs is also a chronological listing, which has practical benefits for archives and version control.
+
+The content_hash and render_hash are computed before signatures are written, and they cover only the content and render trees, not the metadata or signature blocks. This allows metadata and annotations to be updated without invalidating the content signature.
+
+
+═══════════════════════════════════════════════════════════════════
+PART FOUR: AXON CONTENT NOTATION (AXC)
+═══════════════════════════════════════════════════════════════════
+
+The primary content file (content/document.axc) is written in AXON Content Notation, a line-oriented structured format that is simultaneously human-readable as plain text and machine-parseable without ambiguity.
+
+AXC is not JSON and not Markdown. It is a new notation designed for the following constraints:
+
+1. A human should be able to read an .axc file with no tooling and understand the full document structure.
+2. A parser should be able to reconstruct the full semantic tree from the .axc file in a single pass with no lookahead.
+3. The format should be diff-friendly: adding a paragraph should produce a diff of exactly the lines added, with no cascading changes elsewhere in the file.
+4. The format should be embeddable as a block inside other programming languages' string literals without escaping conflicts.
+
+AXC syntax fundamentals:
+
+Every content node begins with a type declaration on a line that starts with the at sign (@), followed by the node type, followed optionally by an attribute block enclosed in square brackets, followed by a colon.
+
+  @section [id="intro" label="Introduction"]:
+
+The body of the node follows on subsequent lines, indented by two spaces. The node ends when indentation returns to the declaring level or a new node declaration of equal or lesser depth appears.
+
+Inline content inside node bodies uses double-angle bracket notation for semantic inline spans:
+
+  This is a paragraph containing <<em>>emphasis<</em>> and a <<cite ref="smith2024">>citation<</cite>>.
+
+Block-level node types defined in the core specification:
+
+  @document         Root node. Exactly one per .axc file.
+  @section          Hierarchical section. Sections nest by indentation.
+  @heading          Heading associated with the containing section.
+  @paragraph        Prose paragraph.
+  @list             Ordered or unordered list.
+  @item             List item. Child of @list.
+  @table            Structured tabular data.
+  @thead            Table header section.
+  @tbody            Table body section.
+  @row              Table row. Child of @thead or @tbody.
+  @cell             Table cell. Child of @row.
+  @figure           Figure container.
+  @image            Raster or vector image.
+  @caption          Caption. Child of @figure.
+  @equation         Mathematical expression.
+  @code             Code block.
+  @blockquote       Extended quotation.
+  @definition       Term-definition pair.
+  @footnote         Footnote content, declared inline with a reference.
+  @aside            Content tangential to the main flow.
+  @callout          Highlighted informational block with severity level.
+  @data             Embedded structured data block.
+  @component        Interactive component declaration.
+  @include          Reference to a fragment in the fragments/ directory.
+  @annotation_zone  Marks a region as targetable for external annotation.
+
+Inline span types defined in the core specification:
+
+  <<em>>            Emphasis (semantic, not visual).
+  <<strong>>        Strong importance.
+  <<cite>>          Citation reference, with mandatory ref attribute.
+  <<link>>          Hyperlink.
+  <<abbr>>          Abbreviation with expansion in title attribute.
+  <<math>>          Inline mathematical expression in LaTeX notation.
+  <<code>>          Inline code fragment.
+  <<mark>>          Highlighted span, with optional semantic class attribute.
+  <<note>>          Inline footnote reference, with content declared in @footnote node.
+  <<data>>          Inline data reference with semantic type and value.
+  <<lang>>          Language switch with mandatory lang attribute.
+  <<time>>          Temporal expression with mandatory datetime attribute.
+
+Complete example of a valid AXC content block representing a research paper section:
+
+  @section [id="results-primary" aria-label="Primary Results"]:
+    @heading [level=2]:
+      Early-Labour Phase Hypercoupling in Severe Acidosis
+    @paragraph:
+      Analysis of the first 20 minutes of labour revealed a statistically significant
+      elevation of FHRUC phase coherence in fetuses subsequently diagnosed with
+      severe acidosis (<<math>>\text{pH} < 7.05<</math>>), compared with those achieving
+      normal outcome (<<math>>\text{pH} \geq 7.20<</math>>).
+    @table [id="tbl-early-coherence" summary="Early FHRUC phase coherence by outcome group"]:
+      @thead:
+        @row:
+          @cell [scope="col"]: Group
+          @cell [scope="col"]: n
+          @cell [scope="col"]: Median Coherence
+          @cell [scope="col"]: IQR
+          @cell [scope="col"]: p (vs Normal)
+      @tbody:
+        @row:
+          @cell: Normal (<<math>>\text{pH} \geq 7.20<</math>>)
+          @cell: 347
+          @cell [data-type="measure" data-unit="coherence"]: 0.250
+          @cell: 0.193–0.342
+          @cell: —
+        @row:
+          @cell: Severe (<<math>>\text{pH} < 7.05<</math>>)
+          @cell: 25
+          @cell [data-type="measure" data-unit="coherence"]: 0.336
+          @cell: 0.213–0.459
+          @cell [data-type="pvalue"]: 0.018
+    @footnote [id="fn-permutation"]:
+      Primary comparisons validated by 2000-shuffle permutation testing.
+      Minute 12: permutation p=0.005. Minute 18: permutation p=0.012.
+
+The indentation-based nesting model means that an AXC file read as plain text conveys the full logical hierarchy of the document without any rendering whatsoever. This is the key legibility guarantee of the format.
+
+
+═══════════════════════════════════════════════════════════════════
+PART FIVE: THE SEMANTIC TYPE SYSTEM
+═══════════════════════════════════════════════════════════════════
+
+Every piece of data in an AXON document carries a declared semantic type. This is the deepest architectural difference between AXON and all existing formats.
+
+In a PDF or DOCX, the number "0.336" appearing in a table cell is just a string of characters positioned at a coordinate. A machine reading the document must infer from context that this is a statistical measure, that it is dimensionless, that it represents a Pearson-like coherence metric bounded between 0 and 1, that it belongs to the row labelled "Severe", and that it should be compared with the number in the row above.
+
+In AXON, that inference is declared, not inferred. Every @cell, @data node, and <<data>> inline span carries a data-type attribute drawn from a type registry, and optionally a data-unit, data-precision, data-source, and data-confidence attribute.
+
+The core type registry defines the following primitive types:
+
+  text                Plain textual content.
+  number              Numeric value. Requires data-precision for scientific documents.
+  measure             Quantitative measurement. Requires data-unit.
+  pvalue              Statistical p-value. Bounded 0–1. Triggers specific render conventions.
+  percentage          Value in percent. Bounded 0–100 unless noted otherwise.
+  ratio               Dimensionless ratio.
+  boolean             True or false.
+  date                Calendar date in ISO 8601.
+  datetime            Timestamp in RFC 3339.
+  duration            Time span in ISO 8601 duration notation.
+  identifier          An identifier of a known class (DOI, ISBN, ORCID, etc.).
+  currency            Monetary amount with declared currency code.
+  coordinate          Geographic coordinate with declared datum.
+  classification      Categorical label from a declared vocabulary.
+  range               Interval with declared lower and upper bounds.
+  formula             A computable expression in declared notation.
+  reference           A citation reference by declared ID.
+  uncertain           A value with an associated uncertainty interval.
+
+Domain-specific type registries are declared in the manifest under a "type_registries" key, referencing external vocabulary URIs or declaring inline type schemas. A clinical document may declare a registry containing types like "cord_blood_ph", "gestational_age_weeks", "apgar_score". A financial document may declare types like "market_cap", "price_earnings_ratio", "reporting_currency".
+
+When a reader encounters a value with a declared type, it can:
+
+1. Validate that the value is within the declared domain.
+2. Apply type-appropriate rendering conventions (e.g., p-values displayed with appropriate decimal precision and asterisk notation based on threshold).
+3. Enable semantic search that finds "all p-values below 0.05 in this document" without natural language processing.
+4. Enable AI extraction that has zero ambiguity about what category of entity each value belongs to.
+5. Enable automated comparison between two documents of the same declared type ("compare the cohort characteristics of these two clinical papers").
+
+This type system is not optional. Any node containing data should declare its type. Readers emit a warning for untyped data nodes unless the node type is explicitly declared as @paragraph or a purely narrative element.
+
+
+═══════════════════════════════════════════════════════════════════
+PART SIX: AXON RENDER NOTATION (AXR)
+═══════════════════════════════════════════════════════════════════
+
+The render layer lives in render/default.axr and in any named profile files. It is strictly separated from content. No visual styling information of any kind appears in content/document.axc. This separation is absolute.
+
+AXR is a property-declaration language similar in structure to CSS but designed for document-level concerns rather than web-page concerns. It operates on node types and attribute selectors drawn from the content tree.
+
+AXR syntax:
+
+  rule-name {
+    target: <node-type-selector> [attribute-selector];
+    property: value;
+    property: value;
+  }
+
+The target property accepts node type names from the AXC type system, optionally filtered by attribute equality or range expressions.
+
+Example AXR rules:
+
+  body-text {
+    target: paragraph;
+    font-family: "EB Garamond";
+    font-size: 11pt;
+    line-height: 1.45;
+    text-align: justified;
+    hyphenation: auto;
+    margin-bottom: 0.8em;
+  }
+
+  section-heading-2 {
+    target: heading [level=2];
+    font-family: "Neue Haas Grotesk";
+    font-size: 14pt;
+    font-weight: 600;
+    margin-top: 1.8em;
+    margin-bottom: 0.6em;
+    page-break-after: avoid;
+  }
+
+  p-value-significant {
+    target: cell [data-type="pvalue"][data-value < 0.05];
+    font-weight: 700;
+    color: #8B0000;
+    suffix: " *";
+  }
+
+  p-value-highly-significant {
+    target: cell [data-type="pvalue"][data-value < 0.001];
+    font-weight: 700;
+    color: #8B0000;
+    suffix: " **";
+  }
+
+The last two rules illustrate a capability that no existing format provides: a render rule whose application is conditioned on the semantic value of the data, not just its syntactic class. A p-value below 0.05 gets bold red text and a star suffix. A p-value below 0.001 gets a double star suffix. This is declared in the render layer, not hardcoded in the content, not implemented by a custom script, and not dependent on the author remembering to apply it manually.
+
+Render profiles are named files in render/profiles/. Each profile is a complete AXR file and is self-contained. The manifest declares which profiles exist. A reader selects a profile based on its output target. Standard profile names in the core specification are:
+
+  screen.axr     — Optimized for display on a backlit screen. Allows color, dynamic sizing.
+  print.axr      — Fixed-layout, high-contrast, print-optimized. No interactive elements.
+  braille.axr    — Output for braille terminal. Specifies tactile element order and notation.
+  audio.axr      — Reading order, pause durations, and prosody hints for text-to-speech.
+  minimal.axr    — Plain text fallback. Every element reduced to its text content with minimal structure markers.
+
+A compliant AXON reader must support at minimum the screen and print profiles for visual output and must not silently fall back to a different profile without notifying the user.
+
+
+═══════════════════════════════════════════════════════════════════
+PART SEVEN: THE EQUATION LAYER
+═══════════════════════════════════════════════════════════════════
+
+Mathematical content is a first-class citizen in AXON. The failure of PDF and HTML to handle mathematical content without auxiliary systems (LaTeX-compiled PDFs, MathJax-dependent HTML) has caused decades of pain in academic and technical publishing.
+
+In AXON, every @equation node and every <<math>> inline span carries the equation in three representations simultaneously:
+
+1. LaTeX source (mandatory). This is the canonical form from which all other forms are derived.
+2. MathML (generated by the encoder, not authored manually). Stored in the node's computed property block for rendering engines that consume MathML.
+3. Linear natural language description (mandatory for accessibility). A prose description of what the equation states, suitable for a screen reader or braille renderer.
+
+Example:
+
+  @equation [id="eq-phase-coherence" label="Phase Coherence Formula"]:
+    @latex:
+      C(t) = \left| \frac{1}{N} \sum_{k=1}^{N} e^{i \Delta\phi(t,k)} \right|
+    @description:
+      Phase coherence C at time t is the magnitude of the mean complex exponential
+      of instantaneous phase differences delta-phi, summed over N samples in the
+      window. Values range from zero, indicating random phase relationship, to one,
+      indicating perfect phase locking between the two signals.
+    @notation_definitions:
+      C(t): Phase coherence at window t, dimensionless, bounded 0 to 1.
+      N: Number of samples in the window.
+      k: Sample index within the window.
+      delta_phi(t,k): Instantaneous phase difference at sample k in window t.
+      e: Euler's number, base of natural logarithm.
+      i: Imaginary unit.
+
+The @notation_definitions block creates a machine-readable glossary of every symbol used in the equation. This glossary is indexed and searchable across the document. When the same symbol appears in multiple equations with different meanings (a common source of ambiguity in academic papers), each @equation node declares its own local symbol table. Conflicts are surfaced by the encoder as warnings.
+
+
+═══════════════════════════════════════════════════════════════════
+PART EIGHT: THE DATA EMBEDDING LAYER
+═══════════════════════════════════════════════════════════════════
+
+AXON documents can embed structured data directly, in a form that is queryable without extracting it to an external file first.
+
+The @data node type declares an inline dataset:
+
+  @data [id="cohort-characteristics" format="axon-table" schema="clinical-cohort-v1"]:
+    columns: [
+      { "name": "group", "type": "classification", "vocabulary": "outcome-groups" },
+      { "name": "n", "type": "number", "precision": 0 },
+      { "name": "gestational_age_median", "type": "measure", "unit": "weeks" },
+      { "name": "birth_weight_median", "type": "measure", "unit": "grams" },
+      { "name": "cord_ph_median", "type": "measure", "unit": "pH" }
+    ]
+    rows: [
+      { "group": "Normal", "n": 347, "gestational_age_median": 39.9, "birth_weight_median": 3399, "cord_ph_median": 7.28 },
+      { "group": "Borderline", "n": 70, "gestational_age_median": 39.5, "birth_weight_median": 3358, "cord_ph_median": 7.17 },
+      { "group": "Moderate", "n": 64, "gestational_age_median": 39.8, "birth_weight_median": 3418, "cord_ph_median": 7.09 },
+      { "group": "Severe", "n": 25, "gestational_age_median": 39.8, "birth_weight_median": 3330, "cord_ph_median": 7.00 }
+    ]
+
+The @data node creates a named, typed, queryable dataset that is simultaneously the source of any tables or figures that visualize it. A @table that renders this data references it by @data id. A @figure containing a plot of this data references it by @data id. This means:
+
+- The data exists once, not duplicated across table, chart, and supplementary file.
+- A machine reading the document can access the raw data without parsing a table rendered for human eyes.
+- An AI assistant can answer quantitative questions about the document by querying @data nodes directly, without natural language number extraction.
+- If the data is corrected (erratum), correcting the @data node automatically propagates to all tables and figures that reference it.
+
+For large datasets that cannot be embedded inline, the assets/data/ directory holds binary data files in Apache Parquet format. @data nodes referencing external files use the asset attribute with the relative path. The data schema is still declared inline.
+
+
+═══════════════════════════════════════════════════════════════════
+PART NINE: VERSIONING AND DELTA HISTORY
+═══════════════════════════════════════════════════════════════════
+
+Every AXON document carries its own version history internally. This is not optional in a production implementation; it is core to the format because a document that cannot prove its own history is not trustworthy in legal, academic, or clinical contexts.
+
+Version history is stored in history/delta_NNN.axd files. Each delta file records:
+
+  {
+    "delta_id": "<integer, matches NNN in filename>",
+    "parent_revision": "<integer>",
+    "timestamp": "<RFC 3339>",
+    "author": "<author identifier from manifest>",
+    "change_summary": "<human-readable description of changes>",
+    "content_diff": "<AXON structural diff in AXD notation>",
+    "render_diff": "<AXON render diff in AXD notation, null if unchanged>",
+    "metadata_diff": "<JSON Merge Patch of metadata changes, null if unchanged>",
+    "parent_content_hash": "<SHA3-256 of content before this delta>",
+    "resulting_content_hash": "<SHA3-256 of content after applying this delta>"
+  }
+
+AXON Structural Diff (AXD) notation describes changes to the content tree at the node level, not the character level. A corrected figure caption is represented as a replacement of the @caption node, not as a character-level diff of the raw text. This makes diffs semantically meaningful and human-auditable.
+
+AXD operations are:
+
+  INSERT node_id after sibling_id content=<AXC block>
+  DELETE node_id
+  REPLACE node_id content=<AXC block>
+  MOVE node_id before|after target_id
+  MODIFY_ATTR node_id attribute=<name> old=<value> new=<value>
+
+The chain of deltas from revision 1 to the current revision is a complete, verifiable, human-auditable record of every change made to the document. Applying all deltas to the revision-1 content must produce the current content exactly, as verified by hash comparison. A reader that detects a hash mismatch in the delta chain must refuse to load the document and report a integrity violation.
+
+When multiple authors edit a document concurrently, AXON defines a merge procedure based on operational transformation applied to the AXD operation set. Conflicts at the node level (two authors modified the same @paragraph simultaneously) are stored as @conflict nodes in the content tree and must be resolved before the document is finalized. A document containing unresolved @conflict nodes has a special manifest flag "merge_conflict_pending": true and compliant readers display a prominent indicator.
+
+
+═══════════════════════════════════════════════════════════════════
+PART TEN: CRYPTOGRAPHIC INTEGRITY AND SIGNATURES
+═══════════════════════════════════════════════════════════════════
+
+AXON implements a layered trust architecture that separates content integrity, authorship attestation, and institutional endorsement.
+
+Layer 1: Content Integrity (mandatory for all documents)
+
+The manifest carries SHA3-256 hashes of the content tree and render tree. Any reader that computes a different hash from the actual file content must reject the document as corrupted or tampered. This provides integrity without any key infrastructure.
+
+Layer 2: Authorship Signature (optional but strongly recommended)
+
+Authors sign the document using Ed25519 signatures over the canonical serialization of the manifest, content, and render trees. Signatures are stored in signatures/author.sig as:
+
+  {
+    "signer_id": "<ORCID, DID, or email>",
+    "signer_public_key": "<base64url-encoded Ed25519 public key>",
+    "signed_hash": "<SHA3-256 of canonical manifest+content+render>",
+    "signature": "<base64url-encoded Ed25519 signature>",
+    "timestamp": "<RFC 3339>",
+    "scope": "content | render | full"
+  }
+
+The scope field allows authors to sign only the content (attesting to intellectual ownership of the text and data) separately from the render (which may be styled by a publisher). This is practically important: an academic author signs the content; a journal signs the render and the published metadata.
+
+Layer 3: Institutional Endorsement (optional)
+
+Third parties (institutions, journals, certification bodies) can add their own signature blocks to signatures/ directory. Each file is named by the signer identifier. Endorsement signatures carry an additional "endorsement_type" field drawn from a registry (peer-reviewed, institutional-preprint, legally-certified, archived, retracted).
+
+A "retracted" endorsement does not delete the document. It adds a machine-readable retraction record that any compliant reader must surface prominently. The original content is preserved, intact and unaltered, because it is the historical record. The retraction is an additional layer of meaning, not an erasure of existing meaning.
+
+This model is fundamentally different from the current academic publishing infrastructure, in which retraction is typically a link on a publisher's website with no guaranteed connection to any copy of the document already in circulation.
+
+
+═══════════════════════════════════════════════════════════════════
+PART ELEVEN: ACCESSIBILITY AS A FIRST-CLASS PROPERTY
+═══════════════════════════════════════════════════════════════════
+
+Accessibility is not a post-processing step in AXON. It is a structural requirement enforced at the schema level.
+
+Every @image node must contain an @alt child node with a plain-text description unless the image is explicitly declared as [role="decorative"]. Decorative images receive no alternative text and are hidden from assistive technologies. The encoder computes alt-text coverage as a fraction and stores it in metadata/accessibility.json. Readers may display this coverage metric as a document quality indicator.
+
+Every @table node must contain a summary attribute describing the table's content and purpose. Every @cell in a header row must carry a scope attribute. Every @equation must contain a @description child node. Every @figure must contain a @caption child node.
+
+The audio.axr render profile defines reading order, which may differ from visual rendering order. The @document root node carries a reading-order attribute that may be "dom-order" (read in the order content appears in the .axc file) or "declared" (read in an order specified by an explicit @reading_order node that lists node IDs in sequence). This separation allows, for example, a two-column academic paper to declare a reading order that flows column 1 top-to-bottom, then column 2 top-to-bottom, even if the visual render interleaves them spatially.
+
+Language switches are declared with <<lang lang="fr">> inline spans. The document-level language is declared in the manifest. Assistive technology consuming AXON receives explicit signals for every language transition in the document, not inferred signals from Unicode character properties.
+
+
+═══════════════════════════════════════════════════════════════════
+PART TWELVE: INTERACTIVITY LAYER
+═══════════════════════════════════════════════════════════════════
+
+AXON documents can contain interactive components, but with a strict constraint: interactivity is always declared as a layered enhancement over complete static content. A document that requires interactivity to convey its meaning is malformed. Every @component node must have a @static_fallback child node that presents the same information in non-interactive form.
+
+Interactive component declaration:
+
+  @component [id="coherence-trajectory-viz" type="line-chart"]:
+    @static_fallback:
+      @figure [id="fig-coherence-static"]:
+        @image [src="assets/images/coherence-trajectory.svg" alt="..."]:
+        @caption:
+          Mean FHRUC phase coherence over time for each outcome group,
+          showing elevated early coherence in severe acidosis cases.
+    @data_source [ref="cohort-characteristics"]:
+    @component_config:
+      {
+        "x_axis": { "field": "minute", "label": "Minutes from Recording Start" },
+        "y_axis": { "field": "mean_coherence", "label": "Mean FHR-UC Phase Coherence" },
+        "series": [
+          { "filter": "group='Normal'", "color": "#2196F3", "label": "Normal (n=347)" },
+          { "filter": "group='Severe'", "color": "#8B0000", "label": "Severe (n=25)" }
+        ],
+        "interactions": ["hover-tooltip", "zoom", "series-toggle"]
+      }
+
+The @component_config block is JSON. Its schema is defined by the declared component type. A compliant reader that supports interactive rendering will instantiate the component from the config. A reader that does not support interactive rendering will display the @static_fallback. Both paths produce complete, meaningful output.
+
+Component types defined in the core specification:
+
+  line-chart          Time-series or continuous variable plot.
+  bar-chart           Categorical comparison chart.
+  scatter-plot        Two-variable scatter with optional regression overlay.
+  data-table          Sortable, filterable table over a @data source.
+  image-annotator     Image with zoomable, hoverable annotation regions.
+  equation-stepper    Step-by-step equation derivation with interactive reveal.
+  code-runner         Executable code block with declared runtime environment.
+  timeline            Temporal sequence visualization.
+  geographic-map      Spatial data visualization over a declared basemap.
+  decision-tree       Interactive branching logic tree.
+
+Third-party component types are declared in the manifest under "component_extensions" with a URI pointing to the component type schema. Readers that encounter an unknown component type fall through to the @static_fallback without error.
+
+
+═══════════════════════════════════════════════════════════════════
+PART THIRTEEN: THE CITATION AND REFERENCE SYSTEM
+═══════════════════════════════════════════════════════════════════
+
+Citations in AXON are structured objects, not formatted strings. There is no concept of a "bibliography style" in the content layer. The bibliography style is a render concern, not a content concern.
+
+Every citation in the content tree is an inline <<cite ref="smith2024">> span pointing to a @reference node declared in a dedicated references section:
+
+  @section [id="references" role="references"]:
+    @reference [id="chudacek2014" type="journal-article"]:
+      @authors:
+        @person: Chudáček, Václav
+        @person: Spilka, Jiří
+        @person: Burša, Miroslav
+      @title:
+        Open access intrapartum CTG database
+      @journal: BMC Pregnancy and Childbirth
+      @volume: 14
+      @issue: 1
+      @pages: 16
+      @year: 2014
+      @doi: 10.1186/1471-2393-14-16
+      @pmid: 24418387
+      @access_date: 2024-01-15
+      @url: https://doi.org/10.1186/1471-2393-14-16
+
+The render profile converts these structured references into formatted bibliography entries in any declared citation style. The render profile for a journal submission might declare APA style; for a legal document, it might declare Bluebook; for a German institution, it might declare DIN 1505. The same content file produces all formats correctly because the content stores the data, not the formatting.
+
+When a cited work is itself an AXON document, the @reference node carries an axon_document_id attribute. This creates a machine-traversable citation graph: a reader can follow references recursively through an AXON archive to build a complete provenance chain, with cryptographic verification at every step. This is not possible with PDF or HTML citations, which are strings that may or may not resolve to accessible resources.
+
+
+═══════════════════════════════════════════════════════════════════
+PART FOURTEEN: THE QUERIES LAYER
+═══════════════════════════════════════════════════════════════════
+
+The queries/ directory contains pre-declared semantic queries over the document's content and data. This is an optional but architecturally significant feature.
+
+Query files are written in AXON Query Language (AQL), a declarative syntax for extracting structured information from the document tree:
+
+  QUERY cohort_summary
+  FROM @data [id="cohort-characteristics"]
+  SELECT group, n, cord_ph_median
+  WHERE n > 20
+  ORDER BY cord_ph_median DESC
+  RETURNS table
+
+  QUERY all_significant_pvalues
+  FROM @cell [data-type="pvalue"]
+  WHERE data-value < 0.05
+  SELECT surrounding_row, data-value, parent_table_id
+  RETURNS list
+
+  QUERY equations_by_symbol
+  FROM @equation
+  WHERE @notation_definitions CONTAINS symbol="C(t)"
+  SELECT equation_id, label, latex, description
+  RETURNS list
+
+Pre-declared queries serve several purposes. They allow a document to ship with its own extraction API: a downstream system consuming the document can execute named queries without writing custom parsing code. They allow the author to declare what questions the document is designed to answer, which is a form of intent documentation. They allow institutional repositories to index documents by running the declared queries and storing the results alongside the document.
+
+AQL is deliberately limited: it is a read-only query language over the document's own content tree and data nodes. It has no side effects and no ability to reach external resources. It is not Turing-complete. These constraints are features, not limitations. A query that can only read deterministic data from a fixed tree is safe to execute in any context, including sandboxed readers, without security review.
+
+
+═══════════════════════════════════════════════════════════════════
+PART FIFTEEN: ANNOTATIONS LAYER
+═══════════════════════════════════════════════════════════════════
+
+The annotations/ directory holds layered annotation sets that are structurally separate from the document's content. This separation is philosophically and practically important: peer review comments, editorial markup, student notes, and reader highlights are not part of the document's intellectual content. They are claims made about the content by third parties or by the reader personally.
+
+An annotation file is structured as:
+
+  {
+    "annotation_set_id": "<UUID>",
+    "annotation_set_type": "peer-review | editorial | personal | institutional-review",
+    "annotator": "<author identifier>",
+    "created": "<RFC 3339>",
+    "target_document": "<document_id>",
+    "target_revision": "<integer>",
+    "annotations": [
+      {
+        "annotation_id": "<UUID>",
+        "target_node_id": "<node id from content tree>",
+        "target_range": { "start_char": 0, "end_char": 45 },
+        "annotation_type": "comment | correction | question | approval | rejection",
+        "severity": "minor | major | critical | null",
+        "body": "<AXC content block>",
+        "resolution_status": "open | resolved | dismissed | null",
+        "resolution_note": "<string or null>"
+      }
+    ]
+  }
+
+The target_node_id and target_range fields create a stable reference to the exact text being annotated. Because the content tree is identified by node IDs rather than character offsets from the document start (as in HTML annotation systems), references remain valid even when earlier content in the document is edited, as long as the target node ID itself has not been deleted.
+
+When a document is revised in response to peer review, the @data revision delta and the annotation set can be linked: each resolved annotation references the delta_id that addressed it. This creates a complete, verifiable record of the review-revision cycle, which is currently absent from all academic publishing workflows.
+
+
+═══════════════════════════════════════════════════════════════════
+PART SIXTEEN: AI INTEGRATION PROPERTIES
+═══════════════════════════════════════════════════════════════════
+
+AXON is designed so that a large language model consuming an AXON document requires no preprocessing, no extraction pipeline, and no heuristic interpretation of visual layout. Every property that a model needs to correctly understand and reason about the document is declared explicitly.
+
+The properties that make AXON natively AI-legible:
+
+The semantic type system eliminates hallucination risk arising from numeric ambiguity. A model reading a table of p-values in a PDF may misread a superscript star as part of the number, or may confuse a footnote marker for a decimal. In AXON, every cell has a declared type, every superscript annotation is structurally separated from the value it annotates, and footnote references are explicit pointers to named @footnote nodes.
+
+The equation notation definitions layer provides exact symbol grounding. When a model encounters C(t) in an AXON equation, it finds in the same node a declaration that C(t) means "Phase coherence at window t, dimensionless, bounded 0 to 1." It does not need to reconstruct this meaning from context.
+
+The @data nodes provide direct access to numerical data in typed, column-structured form. A model asked "what was the median coherence in the severe acidosis group" does not need to parse a rendered table. It queries the @data node directly.
+
+The citation @reference nodes provide structured bibliographic data. A model asked to evaluate the evidentiary basis of a claim can traverse the citation graph to the referenced works, read their @data nodes and @abstract sections, and return a grounded assessment.
+
+The annotation sets provide an explicit record of expert review. A model can read peer review annotations and their resolution status as structured data, identifying which concerns were raised and how they were addressed, without extracting this information from prose exchanges.
+
+The versioning history provides a complete provenance record. A model asked "has this figure been corrected since publication" can inspect the delta history to find modifications to the relevant @figure node.
+
+Together, these properties mean that an AI assistant working with an AXON document corpus can provide document-grounded responses that cite specific node IDs, specific data values with their declared types, specific annotation resolution records, and specific revision events. These responses are verifiable by any reader who opens the same document. This is not possible with any current document format.
+
+
+═══════════════════════════════════════════════════════════════════
+PART SEVENTEEN: ENCODING AND ENCODING CONSTRAINTS
+═══════════════════════════════════════════════════════════════════
+
+All text in AXON is UTF-8, mandatory, without BOM.
+
+All JSON components (manifest, metadata, annotation sets, delta files, component configs) must produce identical output when any two compliant serializers process the same data structure. This requires: keys sorted lexicographically, no trailing whitespace, no blank lines except where structurally required, numbers serialized without unnecessary decimal places (integer 25 not 25.0), timestamps in RFC 3339 with UTC offset and no fractional seconds unless fractional precision is semantically meaningful.
+
+The .axc content file uses two-space indentation, mandatory. Tab characters are not permitted in .axc files. Each node declaration must appear on its own line. Attribute blocks must not span multiple lines unless the total attribute block length exceeds 120 characters, in which case each attribute must appear on its own line, indented by four spaces relative to the node declaration.
+
+The .axr render files use two-space indentation, mandatory.
+
+Line endings in all text files within the archive are LF, not CRLF. This is enforced regardless of the operating system of the encoder.
+
+Binary assets in the assets/ directory are stored without compression inside the ZIP archive, because they are typically already compressed (JPEG, PNG, Parquet) and double compression produces larger files with slower decompression. The text-format files (.axc, .axr, .json, .axd, .aql) are stored with DEFLATE compression level 9.
+
+The canonical serialization used for hash computation and signature verification applies the UTF-8 encoded text of each file in the order: manifest.json, content/document.axc, render/default.axr, content/fragments/* in alphabetical filename order, render/profiles/* in alphabetical filename order. Metadata, asset, signature, history, query, and annotation files are not included in the canonical serialization used for content integrity hashes, which allows these files to be updated (new annotations added, new signatures added) without invalidating the content hash.
+
+
+═══════════════════════════════════════════════════════════════════
+PART EIGHTEEN: DOCUMENT TYPE REGISTRY
+═══════════════════════════════════════════════════════════════════
+
+The manifest "document_type" field draws from a hierarchical registry. The top-level types in the core specification are:
+
+  article.research        Academic research paper with methods, results, conclusions.
+  article.review          Systematic or narrative review article.
+  article.editorial       Editorial or opinion piece.
+  article.case-report     Clinical case report.
+  report.technical        Technical report with specification or analysis.
+  report.institutional    Institutional report (annual report, regulatory filing, etc.).
+  report.audit            Financial or compliance audit.
+  legal.contract          Legally binding contract between parties.
+  legal.legislation       Enacted statute or regulation text.
+  legal.ruling            Court ruling or administrative decision.
+  legal.filing            Regulatory or court filing.
+  book.monograph          Single-author or single-topic book.
+  book.chapter            Chapter within a larger work.
+  book.textbook           Educational textbook.
+  correspondence.letter   Formal letter.
+  correspondence.memo     Internal memo or memorandum.
+  correspondence.email    Email communication preserved as a document.
+  specification           Technical specification or standard.
+  dataset                 Primary dataset with documentation.
+  protocol                Research or clinical protocol.
+  patent                  Patent application or grant.
+  preprint                Research article prior to peer review.
+
+Document type determines which structural elements are required. An article.research document must contain sections matching the declared structure (typically introduction, methods, results, discussion, conclusions). A legal.contract must contain a parties section, a definitions section, and a terms section. An AXON encoder validates the presence of required sections against the document type and emits an error for missing mandatory sections.
+
+
+═══════════════════════════════════════════════════════════════════
+PART NINETEEN: MIGRATION AND COMPATIBILITY
+═══════════════════════════════════════════════════════════════════
+
+AXON makes no claims of backward compatibility with PDF, DOCX, or HTML. It is a new format. However, the transition to AXON from existing formats is facilitated by the following toolchain components, which are part of the reference implementation:
+
+pdf2axon: A conversion tool that produces a best-effort AXON document from a PDF input. It uses the same geometric layout analysis described in the Python pipeline accompanying this paper: Hilbert-transform-based reading order reconstruction, gap-analysis-based column detection, and template-based section type inference. The output is marked with a conversion_provenance record in metadata/provenance.json, indicating that the document was produced by automated conversion rather than native authoring. Converted documents carry a manifest flag "native_axon": false. All structural inferences made by the converter are marked with "confidence" attributes (high, medium, low) so that downstream readers and AI systems know which parts of the structure are authoritatively declared and which are inferred.
+
+docx2axon: Converts DOCX files by reading the underlying Office Open XML structure. Style mappings (Heading 1 → @heading[level=1], Normal → @paragraph, etc.) are applied and the result is a structurally correct AXON document for most standard DOCX files. Complex DOCX features (tracked changes, mail merge fields, embedded macros) are either mapped to AXON equivalents or dropped with a conversion warning.
+
+html2axon: Converts HTML documents by mapping DOM elements to AXC node types. Inline styles are converted to an inferred .axr render file. The semantic fidelity of html2axon output depends heavily on the quality of the source HTML's semantic markup: HTML that uses div and span for everything produces low-confidence AXON with extensive medium/low confidence tags. Semantic HTML5 (article, section, aside, figure, table with thead/tbody) produces high-confidence AXON.
+
+md2axon: Converts Markdown documents. Given the limited expressiveness of Markdown, md2axon conversion is high-confidence but incomplete: the resulting AXON document will be structurally correct and semantically basic, but will lack type annotations, equation notation definitions, and data nodes. These must be added manually or through the AI-assisted authoring tools described below.
+
+The reverse direction — axon2pdf and axon2html — uses the declared render profile to produce output in the target format. axon2pdf applies the print.axr profile to generate deterministic page layout and produces a PDF in which the underlying tagged-PDF structure is populated from the AXON content tree. This means AXON-derived PDFs have better accessibility and extractability than natively authored PDFs, because their structure was authored in AXON and the PDF is a rendering artifact.
+
+
+═══════════════════════════════════════════════════════════════════
+PART TWENTY: REFERENCE IMPLEMENTATION SPECIFICATION
+═══════════════════════════════════════════════════════════════════
+
+The reference implementation consists of four components:
+
+1. axon-core: The parsing and validation library. Implemented in Rust for performance and safety. Exposes a C-compatible FFI layer for integration with other languages. Provides: AXON archive reading, content tree parsing, render profile parsing, schema validation, hash computation and verification, delta application, AQL query execution.
+
+2. axon-encode: The encoding library. Takes a content tree object and a render profile object and produces a valid, deterministic .axon archive. Validates all mandatory constraints and emits structured errors for violations. Implements canonical serialization for hash and signature purposes.
+
+3. axon-render: The rendering library. Takes an .axon archive and a target profile name and produces output in the target format (PDF, HTML, SVG, plain text). Implements the AXR rule engine, the component instantiation system (with static fallback), and the equation rendering pipeline.
+
+4. axon-tools: Command-line utilities for common operations. Includes: axon validate, axon render, axon diff, axon sign, axon verify, axon query, axon convert, axon merge, axon history.
+
+Python bindings to axon-core and axon-encode are provided as the primary API for document authoring and processing pipelines, given the centrality of Python to scientific computing and AI tooling.
+
+The reference implementation is specification-complete: every feature described in this specification has a corresponding implementation. No feature is declared in the specification without a reference implementation. This constraint is maintained by co-authoring the specification and the test suite simultaneously and by requiring that all specification additions pass the full test suite before they are merged.
+
+
+═══════════════════════════════════════════════════════════════════
+PART TWENTY-ONE: THE UNIT OF TRUST
+═══════════════════════════════════════════════════════════════════
+
+Every existing document format defines its unit of trust as the file or the URL. A PDF is trustworthy (or not) as a whole; there is no mechanism in the format itself to express that one section has been peer reviewed and another has not, that one figure has been corrected by erratum and another has not, that one table has been independently verified and another contains preliminary data.
+
+In AXON, the unit of trust is the node. Any @section, @table, @data, or @figure node can carry its own trust metadata, independent of the document-level trust metadata.
+
+  @data [id="primary-results" trust-level="peer-reviewed" endorsing-signature="journal.sig"]:
+
+  @data [id="supplementary-analysis" trust-level="preliminary" review-status="pending"]:
+
+This node-level trust model enables use cases that are currently impossible:
+
+A living systematic review that updates its @data nodes as new trials are published, with each new data point carrying the trust level of the evidence it represents.
+
+A regulatory submission that separates peer-reviewed pharmacokinetic data from sponsor-provided efficacy claims, with each section carrying the appropriate institutional signature.
+
+A legal contract in which certain clauses have been reviewed and signed by counsel, while others are marked as drafts pending review.
+
+A textbook in which core conceptual content carries the author's signature, worked examples carry a reviewer's endorsement, and problem sets carry a "community-contributed, unreviewed" flag.
+
+The trust metadata does not make claims about truth. It makes claims about process: who attested to this content, under what role, at what time, and what review process it has undergone. The reader and their institution determine what trust levels they require for what purposes. AXON provides the infrastructure to express and verify trust claims. It does not enforce them.
+
+
+═══════════════════════════════════════════════════════════════════
+PART TWENTY-TWO: COMPLETENESS AND SCOPE
+═══════════════════════════════════════════════════════════════════
+
+This specification defines a complete, self-consistent document format. It does not require any external system to be meaningful. A document that conforms to this specification and is read by a compliant reader produces correct output on any device, in any output mode, for any user, without any network access, without any external font server, without any external rendering engine, without any external validation service.
+
+The specification is intentionally forward-compatible. The axon_version field in the manifest allows readers to detect documents authored with future specification versions and fall back gracefully: unknown node types are treated as @aside nodes and their content is preserved but rendered with a "unknown element type" indicator. Unknown render properties are silently ignored. Unknown component types fall through to @static_fallback.
+
+AXON is not a web technology, a cloud technology, or a platform-specific technology. It is a file format. A valid .axon file can exist on a USB drive, in an email attachment, in a version-controlled repository, in an institutional archive, or in a zero-connectivity embedded medical device. Its validity and its content are self-contained. This is intentional. The world already has too many documents whose integrity depends on a third-party server being available.
+
+The problems AXON solves — structural opacity, extraction pain, layout rigidity, semantic blindness, accessibility failure, single-layer trust, history loss, AI illegibility — are not solved by making documents smarter network citizens. They are solved by making documents more self-sufficient, more semantically explicit, and more honest about what they contain and where that content came from.
+
+This is a format for the next fifty years.
+
+
+═══════════════════════════════════════════════════════════════════
+END OF SPECIFICATION
+AXON Document Format v1.0
+═══════════════════════════════════════════════════════════════════

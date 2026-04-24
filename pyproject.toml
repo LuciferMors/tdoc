@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "axon-document"
+version = "0.1.0"
+description = "AXON document format — deterministic semantic document archive with typed content, render profiles, and cryptographic integrity."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "Independent Frontier Research" },
+]
+keywords = ["document", "format", "semantic", "deterministic", "archive", "axon"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Text Processing :: Markup",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = []
+
+[project.optional-dependencies]
+pdf = ["PyMuPDF>=1.23.0"]
+fastjson = ["orjson>=3.9.0"]
+crypto = ["cryptography>=41.0.0"]
+mathml = ["latex2mathml>=3.77.0"]
+all = [
+    "PyMuPDF>=1.23.0",
+    "orjson>=3.9.0",
+    "cryptography>=41.0.0",
+    "latex2mathml>=3.77.0",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+
+[project.scripts]
+axon = "axon:main"
+
+[project.urls]
+Specification = "https://github.com/axon-format/spec"
+
+[tool.setuptools]
+py-modules = ["axon"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-ra -q"

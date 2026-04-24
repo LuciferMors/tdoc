@@ -1,0 +1,23 @@
+# gitleaks configuration — extends the default ruleset with our false-positive
+# allowlist. Runs in pre-commit and in CI on every push.
+
+[extend]
+# Inherit gitleaks default rules (catches AWS, GCP, GitHub tokens, Stripe,
+# Slack, OpenAI, Anthropic keys, PEM files, etc.).
+useDefault = true
+
+[allowlist]
+description = "Allowlist for known-safe test/dev values"
+
+# The dev-only seeded API key. Matched pattern is `tdoc_dev_local` and the
+# `tdoc_` prefix followed by >=20 token-urlsafe chars. Dev-only, not a secret.
+regexes = [
+  '''tdoc_dev_local''',
+]
+
+# Test files may contain fake/dummy tokens. Allow within tests/ only.
+paths = [
+  '''tests/.*''',
+  '''product/tests/.*''',
+  '''\.gitleaks\.toml''',
+]

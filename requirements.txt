@@ -1,0 +1,15 @@
+# AXON Document Format — Python Dependencies
+# Core (stdlib only — no external dependencies required for base functionality)
+# Python >= 3.10
+
+# Optional: PDF conversion
+PyMuPDF>=1.23.0          # fitz — for convert_pdf()
+
+# Optional: Fast JSON
+orjson>=3.9.0             # drop-in replacement for json, faster serialisation
+
+# Optional: Cryptographic signatures (Ed25519)
+cryptography>=41.0.0      # for sign_document() with real key pairs
+
+# Optional: MathML generation from LaTeX
+latex2mathml>=3.77.0      # for equation rendering in HTML

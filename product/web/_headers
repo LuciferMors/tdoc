@@ -1,0 +1,40 @@
+# Cloudflare Pages reads this file and applies headers to every response.
+# Reference: https://developers.cloudflare.com/pages/configuration/headers/
+#
+# Targets Mozilla Observatory "A+" grade. Tested against:
+#   - https://observatory.mozilla.org/analyze/tdoc.xyz
+#   - https://securityheaders.com/?q=tdoc.xyz
+
+/*
+  # Force HTTPS for 1 year, include subdomains, preload-ready.
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+
+  # Prevent the landing page from being iframed by attacker sites (clickjacking defense).
+  X-Frame-Options: DENY
+
+  # Block MIME sniffing — browsers should trust our declared Content-Type.
+  X-Content-Type-Options: nosniff
+
+  # Leak less info to third-party sites when users follow outbound links.
+  Referrer-Policy: strict-origin-when-cross-origin
+
+  # Disable powerful browser APIs we never use — reduces XSS impact radius.
+  Permissions-Policy: accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), interest-cohort=()
+
+  # Content Security Policy — locks down what the page can load.
+  # - default-src 'self': only our own origin
+  # - style-src 'self' 'unsafe-inline': we use inline <style> in index.html
+  # - img-src 'self' data:: no external images (update if you add a CDN)
+  # - connect-src 'self' https://api.tdoc.xyz: only our API + same-origin
+  # - frame-ancestors 'none': redundant with X-Frame-Options but covers older browsers
+  # - form-action 'self' https://tdoc.lemonsqueezy.com: only our site and LS checkout
+  # - upgrade-insecure-requests: force http→https upgrade automatically
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api.tdoc.xyz; frame-ancestors 'none'; form-action 'self' https://tdoc.lemonsqueezy.com https://*.lemonsqueezy.com; base-uri 'self'; upgrade-insecure-requests
+
+  # Cross-origin isolation defaults — defense in depth against side-channel leaks.
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+
+  # Hide framework fingerprint.
+  X-Powered-By:
+  Server: tdoc

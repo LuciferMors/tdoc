@@ -1,0 +1,40 @@
+# Keep the image small + avoid leaking local state into production.
+.git
+.github
+.venv
+.pytest_cache
+__pycache__
+*.pyc
+*.pyo
+
+# Internal tooling state — NEVER ship
+.claude
+.genesis
+.founder_agent
+
+# Dev-only files
+tests
+product/tests
+demo.py
+demo_out
+*.md
+!README.md
+paper*.txt
+paper*.html
+paper*.axc
+paper_native.axon
+fhr_paper.axon
+
+# Local secrets + editor
+.env
+.env.local
+*.pem
+*.key
+.vscode
+.idea
+.DS_Store
+
+# Pre-commit + lint configs (not needed at runtime)
+.pre-commit-config.yaml
+.gitleaks.toml
+.gitignore

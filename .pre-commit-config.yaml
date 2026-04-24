@@ -1,0 +1,47 @@
+# Pre-commit runs on every `git commit` — catches problems BEFORE they reach GitHub.
+# Install once:
+#   .venv/bin/pip install pre-commit
+#   .venv/bin/pre-commit install
+#
+# Hooks below run in order; any failure blocks the commit.
+
+repos:
+  # ── Basic hygiene ────────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=1000']   # reject >1MB files — prevents accidental binary/data commits
+      - id: check-merge-conflict
+      - id: detect-private-key   # catches PEM/OpenSSH keys in staged files
+      - id: mixed-line-ending
+
+  # ── Secret scanning ──────────────────────────────────────────────────────
+  # gitleaks is the industry default; catches API keys, passwords, tokens.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+
+  # ── Python static analysis (SAST) ────────────────────────────────────────
+  # bandit finds common insecure Python patterns (eval, shell=True, etc.).
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.9
+    hooks:
+      - id: bandit
+        args: ['-ll', '-r', 'axon.py', 'product/service/']
+        # -ll = low confidence, low severity and above
+        # -r  = recursive
+
+  # ── Python formatting + linting ──────────────────────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
