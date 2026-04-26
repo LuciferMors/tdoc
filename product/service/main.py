@@ -42,6 +42,7 @@ from axon import (  # noqa: E402
     encode_archive_to_bytes,
     execute_aql,
     parse_axc,
+    parse_tdoc_archive,
     render_html,
     serialize_axc,
     serialize_axr,
@@ -373,10 +374,13 @@ async def structure(
             doc = convert_axc_string(
                 blob.decode("utf-8"), title=title, document_type=document_type
             )
+        elif suffix.endswith(".tdoc"):
+            # Round-trip a previously-downloaded archive: unzip + parse.
+            doc = parse_tdoc_archive(blob)
         else:
             raise HTTPException(
                 status_code=415,
-                detail=f"Unsupported file type: {suffix!r}. Use .pdf / .axc / .txt / .md",
+                detail=f"Unsupported file type: {suffix!r}. Use .pdf / .axc / .txt / .md / .tdoc",
             )
     except AxonSecurityError as e:
         raise HTTPException(status_code=400, detail=f"Unsafe input: {e}")
@@ -434,10 +438,12 @@ async def try_public(
                 title=title,
                 document_type=document_type,
             )
+        elif suffix.endswith(".tdoc"):
+            doc = parse_tdoc_archive(blob)
         else:
             raise HTTPException(
                 status_code=415,
-                detail=f"Unsupported file type: {suffix!r}. Use .pdf / .axc / .txt / .md",
+                detail=f"Unsupported file type: {suffix!r}. Use .pdf / .axc / .txt / .md / .tdoc",
             )
     except AxonSecurityError as e:
         raise HTTPException(status_code=400, detail=f"Unsafe input: {e}")

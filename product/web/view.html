@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tdoc · view</title>
+<meta name="description" content="Open any .tdoc file in the browser. Drop a local archive, paste a URL, or pick an example. Print or save as PDF.">
+<link rel="canonical" href="https://tdoc.xyz/view">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta property="og:title" content="tdoc · view">
+<meta property="og:description" content="Open any .tdoc file in the browser. Print or save as PDF.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://tdoc.xyz/view">
+<meta name="twitter:card" content="summary">
+<meta name="theme-color" content="#fafaf7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141310" media="(prefers-color-scheme: dark)">
+
+<script src="./theme.js?v=2"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=JetBrains+Mono:ital,wght@0,400..600;1,400..600&display=swap">
+
+<style>
+:root{
+  --serif: "Newsreader", "Iowan Old Style", Baskerville, Georgia, serif;
+  --mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --col-max: 1180px; --gutter: clamp(1.5rem, 4vw, 4rem);
+}
+:root, [data-theme="light"]{
+  --paper:#fafaf7;--paper-2:#f2eee4;--ink:#0c0c0c;--ink-2:#2b2a27;
+  --ink-3:#55524d;--ink-4:#8a8680;--rule:#c8c3b7;--rule-soft:#e6e1d4;
+  --oxblood:#7a0c1a;--oxblood-wash:#7a0c1a10;
+}
+[data-theme="dark"]{
+  --paper:#141310;--paper-2:#1c1a15;--ink:#efe9d9;--ink-2:#c6c0b1;
+  --ink-3:#8a8577;--ink-4:#5a574f;--rule:#2c2a24;--rule-soft:#221f1a;
+  --oxblood:#d85565;--oxblood-wash:#d8556518;
+}
+*,*::before,*::after{box-sizing:border-box;min-width:0}
+html{-webkit-text-size-adjust:100%;overflow-x:hidden}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);
+  font-size:clamp(1rem, 0.9rem + 0.45vw, 1.15rem);line-height:1.5;
+  font-variation-settings:"opsz" 17;-webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;overflow-wrap:break-word}
+a{color:var(--ink);text-decoration-thickness:1px;text-underline-offset:3px;text-decoration-color:var(--rule)}
+a:hover{color:var(--oxblood);text-decoration-color:var(--oxblood)}
+::selection{background:var(--oxblood);color:var(--paper)}
+.column{max-width:var(--col-max);margin:0 auto;padding:0 var(--gutter)}
+
+.masthead{border-bottom:1px solid var(--rule);padding:1.4rem 0}
+.masthead__grid{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;flex-wrap:wrap}
+.masthead__title{font-family:var(--serif);font-style:italic;font-weight:500;font-size:1.4rem;margin:0;letter-spacing:-0.01em}
+.masthead__title a{text-decoration:none}
+.masthead__title em{font-style:italic;color:var(--oxblood)}
+.masthead__meta{font-family:var(--mono);font-size:.78rem;color:var(--ink-3);letter-spacing:.04em;text-transform:uppercase}
+.masthead__meta a{color:var(--ink-3);text-decoration:none}
+.masthead__meta a:hover{color:var(--oxblood);text-decoration:underline}
+.theme-toggle button{background:none;border:0;font:inherit;color:inherit;cursor:pointer;padding:0;letter-spacing:inherit;text-transform:inherit}
+.theme-toggle button[aria-pressed="true"]{color:var(--oxblood)}
+.theme-toggle .sep{margin:0 .4em;color:var(--ink-4)}
+
+.hero{padding:clamp(3rem, 8vw, 6rem) 0 clamp(2rem, 5vw, 3.5rem)}
+.hero h1{font-family:var(--serif);font-weight:400;font-size:clamp(2.4rem,1.8rem + 3vw,4.2rem);line-height:1.05;letter-spacing:-.02em;margin:0 0 1.2rem;font-variation-settings:"opsz" 60}
+.hero h1 em{font-style:italic;color:var(--oxblood)}
+.hero p{max-width:38rem;color:var(--ink-2);font-size:1.1rem;margin:0}
+
+.eyebrow{font-family:var(--mono);font-size:.75rem;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3);margin:0 0 .8rem}
+
+/* Two input modes side-by-side */
+.inputs{
+  display:grid;grid-template-columns:1fr 1fr;gap:1rem;
+  margin:0 0 1.4rem;
+}
+@media (max-width: 720px){ .inputs{grid-template-columns:1fr} }
+.input-card{
+  border:1px dashed var(--rule);background:var(--paper-2);
+  padding:1.4rem 1.2rem;cursor:pointer;
+  transition:border-color 120ms ease, background 120ms ease;
+}
+.input-card:hover, .input-card[data-drag="true"]{border-color:var(--oxblood);background:var(--oxblood-wash)}
+.input-card:focus-within{outline:2px solid var(--oxblood);outline-offset:2px}
+.input-card__title{font-family:var(--serif);font-style:italic;font-size:1.15rem;margin:0 0 .35rem}
+.input-card__hint{font-family:var(--mono);font-size:.74rem;color:var(--ink-3);letter-spacing:.04em;margin:0 0 .8rem}
+.input-card input[type=file]{position:absolute;left:-9999px}
+.input-card input[type=url]{
+  width:100%;padding:.55rem .7rem;font:inherit;font-family:var(--mono);font-size:.85rem;
+  background:transparent;color:var(--ink);
+  border:1px solid var(--rule);border-radius:0;
+}
+.input-card input[type=url]:focus{outline:2px solid var(--oxblood);outline-offset:0;border-color:var(--oxblood)}
+.input-card button{
+  margin-top:.6rem;background:none;border:1px solid var(--rule);padding:.4rem .8rem;
+  font:inherit;font-family:var(--mono);font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--ink-2);cursor:pointer;
+}
+.input-card button:hover{color:var(--oxblood);border-color:var(--oxblood)}
+
+.examples{font-family:var(--mono);font-size:.78rem;color:var(--ink-3);margin:0 0 1.6rem}
+.examples a{color:var(--ink-3);cursor:pointer}
+.examples a:hover{color:var(--oxblood)}
+
+.status{font-family:var(--mono);font-size:.85rem;color:var(--ink-3);margin:0 0 1.4rem;min-height:1.4em}
+.status[data-state="error"]{color:var(--oxblood)}
+.status[data-state="ok"]{color:var(--ink-2)}
+.spinner{display:inline-block;width:.8em;height:.8em;border:1.5px solid var(--rule);border-top-color:var(--oxblood);border-radius:50%;animation:spin .7s linear infinite;vertical-align:-.05em;margin-right:.4em}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.frame-wrap{display:none;border:1px solid var(--rule);background:var(--paper-2)}
+.frame-wrap[data-shown="true"]{display:block}
+.frame-toolbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;padding:.55rem .8rem;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.frame-toolbar button{background:none;border:1px solid var(--rule);padding:.3rem .6rem;font:inherit;color:var(--ink-2);cursor:pointer;letter-spacing:inherit;text-transform:inherit}
+.frame-toolbar button:hover{color:var(--oxblood);border-color:var(--oxblood)}
+.frame-toolbar button.primary{color:var(--oxblood);border-color:var(--oxblood)}
+
+iframe.preview{width:100%;height:78vh;border:0;background:white;display:block}
+
+.kv{display:grid;grid-template-columns:9rem 1fr;gap:.4rem 1.4rem;margin:1rem 0 0;font-family:var(--mono);font-size:.78rem}
+.kv dt{color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em}
+.kv dd{margin:0;color:var(--ink-2);overflow-wrap:anywhere}
+@media (max-width: 640px){.kv{grid-template-columns:1fr;gap:.1rem 0}.kv dt{margin-top:.6rem}}
+
+.colophon{margin-top:clamp(3rem,8vw,6rem);padding:2rem 0;border-top:1px solid var(--rule);font-family:var(--mono);font-size:.78rem;color:var(--ink-3);text-align:center}
+.colophon a{color:var(--ink-3)}
+</style>
+</head>
+
+<body>
+
+<header class="masthead">
+  <div class="column masthead__grid">
+    <h1 class="masthead__title"><a href="/">tdoc<em>.</em></a></h1>
+    <div class="masthead__meta">
+      <a href="/">Home</a> · <a href="/try">Try</a> · <a href="/#format">Format</a> · <a href="https://github.com/LuciferMors/tdoc" rel="noopener">Source</a>
+      &nbsp;&nbsp;
+      <span class="theme-toggle" role="group" aria-label="Theme">
+        <button type="button" data-theme-set="light" aria-pressed="true">Day</button><span class="sep" aria-hidden="true">·</span><button type="button" data-theme-set="dark" aria-pressed="false">Night</button>
+      </span>
+    </div>
+  </div>
+</header>
+
+<main class="column">
+
+<section class="hero">
+  <p class="eyebrow">Open any .tdoc · in the browser · no install</p>
+  <h1>The universal <em>.tdoc viewer.</em></h1>
+  <p>Drop a <code>.tdoc</code> archive you saved from <a href="/try">/try</a>, or paste a URL to one. The viewer renders the document with journal-quality typography. Click <em>Print</em> in the toolbar to save as a PDF — your browser does the conversion, no server needed.</p>
+</section>
+
+<section>
+  <div class="inputs">
+    <div class="input-card" id="drop-card">
+      <p class="input-card__title">Drop a <em>.tdoc</em> file</p>
+      <p class="input-card__hint">— or click to choose —</p>
+      <input type="file" id="file-input" accept=".tdoc,application/zip,application/x-tdoc">
+      <button type="button" id="file-btn">Choose file</button>
+    </div>
+
+    <div class="input-card">
+      <p class="input-card__title">Open from <em>URL</em></p>
+      <p class="input-card__hint">https or relative path · CORS permitting</p>
+      <input type="url" id="url-input" placeholder="https://example.com/paper.tdoc" autocomplete="off">
+      <button type="button" id="url-btn">Open</button>
+    </div>
+  </div>
+
+  <p class="examples">
+    Or try one:
+    <a id="example-sample">research-paper sample</a>
+  </p>
+
+  <p class="status" id="status" data-state="idle"></p>
+
+  <div class="frame-wrap" id="frame-wrap" data-shown="false">
+    <div class="frame-toolbar">
+      <span id="frame-title">Document</span>
+      <span>
+        <button type="button" id="print-btn" class="primary">Print / Save as PDF</button>
+        <button type="button" id="reload-btn">Reload</button>
+      </span>
+    </div>
+    <iframe class="preview" id="preview" sandbox="allow-modals" title="Document preview"></iframe>
+    <dl class="kv" style="padding:0.8rem 1rem 1rem">
+      <dt>Document ID</dt><dd id="r-doc-id">—</dd>
+      <dt>Content hash</dt><dd id="r-content-hash">—</dd>
+      <dt>Render hash</dt><dd id="r-render-hash">—</dd>
+      <dt>Nodes</dt><dd id="r-nodes">—</dd>
+    </dl>
+  </div>
+</section>
+
+</main>
+
+<footer class="colophon">
+  <div class="column">
+    <p>tdoc · <a href="/">home</a> · <a href="/try">try</a> · <a href="/terms">terms</a> · <a href="/privacy">privacy</a> · <a href="/security">security</a> · <a href="https://github.com/LuciferMors/tdoc" rel="noopener">github</a> · <a href="mailto:hello@tdoc.xyz">hello@tdoc.xyz</a></p>
+  </div>
+</footer>
+
+<script src="./view.js?v=1"></script>
+
+</body>
+</html>

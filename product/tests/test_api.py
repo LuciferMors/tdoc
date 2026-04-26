@@ -258,3 +258,36 @@ def test_try_public_returns_downloadable_tdoc_archive():
     names = set(zf.namelist())
     assert "manifest.json" in names
     assert "content/document.axc" in names
+
+
+def test_try_public_accepts_tdoc_archive_roundtrip():
+    """Upload .axc → get back .tdoc → re-upload .tdoc → see the same content."""
+    import base64
+
+    axc = (
+        b'@section [id="intro"]:\n'
+        b"  @heading [level=1]:\n"
+        b"    Hello from a roundtrip\n"
+        b"  @paragraph:\n"
+        b"    Some paragraph body.\n"
+    )
+    r1 = client.post("/v1/try-public", files={"file": ("in.axc", axc, "text/plain")})
+    assert r1.status_code == 200, r1.text
+    archive_bytes = base64.b64decode(r1.json()["archive_b64"])
+    assert archive_bytes.startswith(b"PK")  # ZIP magic
+
+    # Re-upload as .tdoc and verify the same axc comes back.
+    r2 = client.post(
+        "/v1/try-public",
+        files={"file": ("downloaded.tdoc", archive_bytes, "application/zip")},
+    )
+    assert r2.status_code == 200, r2.text
+    assert "Hello from a roundtrip" in r2.json()["axc"]
+
+
+def test_try_public_rejects_corrupt_tdoc():
+    files = {"file": ("bad.tdoc", b"not a zip at all", "application/zip")}
+    r = client.post("/v1/try-public", files=files)
+    # Either 400 (AxonSecurityError caught) or 500 (unhandled) — must be a
+    # 4xx so the client gets a clean error, never a stack trace.
+    assert 400 <= r.status_code < 500, r.text

@@ -252,6 +252,31 @@
     }
   });
 
+  on("print-btn", () => {
+    if (!lastData || !lastData.html) {
+      setStatus("nothing to print yet — upload a document first", "error");
+      return;
+    }
+    // Open a fresh window with the rendered HTML and trigger native print.
+    // Blob URL keeps the print document isolated from this page's CSP.
+    const printedHtml = lastData.html.replace(
+      "</body>",
+      '<script>window.addEventListener("load",function(){setTimeout(function(){window.print();},120);window.addEventListener("afterprint",function(){window.close();});});<\/script></body>'
+    );
+    const blob = new Blob([printedHtml], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, "_blank", "noopener");
+    if (!w) {
+      setStatus(
+        "your browser blocked the print window — allow popups for tdoc.xyz",
+        "error"
+      );
+      URL.revokeObjectURL(url);
+      return;
+    }
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  });
+
   on("download-tdoc-btn", () => {
     if (!lastData || !lastData.archive_b64) {
       setStatus("no archive on this response — try again", "error");

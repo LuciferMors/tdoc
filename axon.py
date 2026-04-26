@@ -1197,29 +1197,158 @@ class HtmlRenderer:
         )
 
     def _generate_styles(self) -> str:
+        # Journal-grade typography. Self-contained — no external font fetches,
+        # so this works inside a sandbox="" iframe (where the Preview tab on
+        # /try and /view embeds it). System-serif stack picks the best
+        # available face per OS: Iowan Old Style on macOS, Cambria on Windows,
+        # Liberation/DejaVu Serif on Linux.
+        #
+        # Includes a complete @media print block so the browser's "Save as
+        # PDF" produces journal-quality output without a server-side renderer.
         return textwrap.dedent("""
-            body { font-family: Georgia, serif; max-width: 800px; margin: 2em auto; padding: 0 1em; line-height: 1.6; color: #1a1a1a; }
-            h1 { font-size: 2em; font-weight: 700; margin-top: 1em; }
-            h2 { font-size: 1.5em; font-weight: 600; margin-top: 1.8em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
-            h3 { font-size: 1.2em; font-weight: 600; margin-top: 1.4em; }
-            p { margin: 0.8em 0; }
-            table { border-collapse: collapse; width: 100%; margin: 1.5em 0; }
-            th, td { border: 1px solid #ccc; padding: 0.4em 0.8em; text-align: left; }
-            th { background: #f5f5f5; font-weight: 600; }
-            figure { margin: 1.5em 0; }
-            figcaption { font-size: 0.9em; color: #555; margin-top: 0.5em; }
-            .equation { display: block; text-align: center; margin: 1.5em 0; font-family: serif; }
-            pre, code { font-family: 'Courier New', monospace; background: #f5f5f5; }
-            pre { padding: 1em; overflow-x: auto; border-radius: 4px; }
-            code { padding: 0.1em 0.3em; border-radius: 2px; }
-            blockquote { border-left: 4px solid #ccc; margin: 1em 0; padding: 0.5em 1em; color: #555; }
-            .callout { border: 1px solid #e0c060; background: #fffbea; padding: 1em; border-radius: 4px; margin: 1em 0; }
-            .callout.critical { border-color: #c00; background: #fff0f0; }
-            .aside { font-size: 0.9em; color: #555; border-left: 3px solid #ddd; padding-left: 1em; }
-            .data-pvalue[data-value] { font-weight: 600; }
-            .footnotes { border-top: 1px solid #ddd; margin-top: 3em; padding-top: 1em; font-size: 0.85em; }
-            .axon-conflict { background: #fff3cd; border: 1px solid #ffc107; padding: 0.5em; }
-            sup.footnote-ref { font-size: 0.75em; }
+            :root{
+              --paper:#fdfdfb; --ink:#0e0e0c; --ink-2:#3b3a36; --ink-3:#6b6862;
+              --rule:#d9d4c7; --rule-soft:#ece7d8; --accent:#7a0c1a;
+              --serif:"Iowan Old Style","Sitka Text",Charter,Cambria,"Hoefler Text",Constantia,"Linux Libertine","Liberation Serif","Bitstream Charter","Times New Roman",serif;
+              --mono:"SF Mono","JetBrains Mono",ui-monospace,Menlo,Consolas,"Liberation Mono",monospace;
+            }
+            *,*::before,*::after{ box-sizing:border-box; }
+            html{ background:var(--paper); }
+            body{
+              font-family:var(--serif);
+              max-width:38rem; margin:3rem auto 5rem; padding:0 1.5rem;
+              line-height:1.55; color:var(--ink); background:var(--paper);
+              font-feature-settings:"onum","kern","liga"; hyphens:auto;
+              -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+            }
+
+            /* Type scale */
+            h1{ font-size:2.05rem; font-weight:600; line-height:1.15; letter-spacing:-0.01em; margin:0 0 1.2rem; }
+            h2{ font-size:1.35rem; font-weight:600; line-height:1.25; margin:2.4rem 0 0.6rem;
+                padding-bottom:0.25rem; border-bottom:1px solid var(--rule-soft); }
+            h3{ font-size:1.10rem; font-weight:600; margin:1.8rem 0 0.4rem; }
+            h4,h5,h6{ font-size:1rem; font-weight:600; margin:1.4rem 0 0.3rem; color:var(--ink-2); }
+            p{ margin:0 0 0.9rem; orphans:3; widows:3; }
+            p + p{ text-indent:0; } /* could enable indent for academic look — leave flat */
+            em,i{ font-style:italic; }
+            strong,b{ font-weight:600; }
+            small{ font-size:0.85em; color:var(--ink-2); }
+
+            section{ margin:0 0 1.4rem; }
+            section[id]{ scroll-margin-top:2rem; }
+
+            /* Lists */
+            ul,ol{ padding-left:1.4rem; margin:0 0 1rem; }
+            li{ margin:0.15rem 0; }
+
+            /* Tables — clean rules, no heavy box */
+            table{ border-collapse:collapse; width:100%; margin:1.6rem 0;
+                    font-feature-settings:"tnum","kern"; font-variant-numeric:tabular-nums; }
+            caption{ caption-side:top; text-align:left; font-style:italic; color:var(--ink-2);
+                     font-size:0.9rem; padding:0 0 0.4rem; }
+            thead th{ border-top:1.5px solid var(--ink); border-bottom:0.8px solid var(--ink); }
+            tbody tr:last-child td{ border-bottom:1.5px solid var(--ink); }
+            th,td{ padding:0.45rem 0.7rem; text-align:left; vertical-align:top;
+                    border-bottom:0.4px solid var(--rule); }
+            th{ font-weight:600; }
+            td[data-type], cell[data-type]{ font-variant-numeric:tabular-nums; }
+
+            /* Typed cells — the AXON differentiator. Subtle underline + tooltip. */
+            [data-type]{
+              background-image:linear-gradient(transparent 60%, var(--accent) 60%, var(--accent) 62%, transparent 62%);
+              cursor:help;
+            }
+            [data-type]:hover{
+              background-image:linear-gradient(transparent 50%, var(--accent) 50%, var(--accent) 100%);
+              color:var(--paper);
+            }
+            [data-type]::after{
+              content:" · " attr(data-type); color:var(--ink-3);
+              font-family:var(--mono); font-size:0.72em; letter-spacing:0.04em;
+              text-transform:uppercase; vertical-align:0.1em;
+            }
+            /* Hide the type label on hover-over for a cleaner read; visible on all
+               other interactions. Toggle this to "always show" if preferred. */
+
+            /* Figures + captions */
+            figure{ margin:1.8rem 0; }
+            figure img,figure svg{ max-width:100%; height:auto; display:block; }
+            figcaption{ font-size:0.88rem; color:var(--ink-2); margin-top:0.5rem;
+                         text-align:left; font-style:italic; }
+            figure[data-figure-id]::before{
+              content:"Figure " attr(data-figure-id) ". ";
+              font-style:normal; font-weight:600; color:var(--ink);
+            }
+
+            /* Equations — centered display, italic Latin (math mode look) */
+            .equation, math, .math-display{
+              display:block; text-align:center; margin:1.8rem 0;
+              font-family:"Latin Modern Math",Cambria Math,"STIX Two Math",STIXGeneral,serif;
+              font-size:1.05em;
+            }
+            .math-inline{ font-family:"Latin Modern Math",Cambria Math,STIXGeneral,serif; }
+
+            /* Code */
+            pre,code,kbd,samp{ font-family:var(--mono); font-size:0.9em; }
+            pre{ background:var(--rule-soft); border-left:3px solid var(--rule);
+                  padding:0.9rem 1.1rem; overflow-x:auto; margin:1.2rem 0; line-height:1.45; }
+            code{ background:var(--rule-soft); padding:0.05em 0.32em; border-radius:2px; }
+            pre code{ background:transparent; padding:0; }
+
+            /* Quotes + asides + callouts — all use rules, never boxes */
+            blockquote{ border-left:3px solid var(--rule); margin:1.2rem 0;
+                         padding:0.2rem 0 0.2rem 1.2rem; color:var(--ink-2); font-style:italic; }
+            .aside{ border-left:3px solid var(--rule); padding:0.2rem 0 0.2rem 1.2rem;
+                     font-size:0.92rem; color:var(--ink-2); margin:1rem 0; }
+            .callout{ border:1px solid var(--rule); padding:0.9rem 1.1rem;
+                       margin:1.2rem 0; background:var(--rule-soft); }
+            .callout.critical{ border-color:var(--accent); border-left-width:3px;
+                                background:transparent; }
+            .callout.critical::before{ content:"⚠ "; color:var(--accent); font-weight:700; }
+
+            /* Footnotes — proper academic treatment */
+            sup.footnote-ref{ font-size:0.72em; vertical-align:0.5em;
+                              text-decoration:none; color:var(--accent); }
+            sup.footnote-ref a{ color:inherit; }
+            .footnotes{ border-top:1px solid var(--rule); margin-top:3rem;
+                         padding-top:1.2rem; font-size:0.88rem; color:var(--ink-2); }
+            .footnotes h2{ font-size:0.85rem; font-weight:600; text-transform:uppercase;
+                            letter-spacing:0.08em; border:0; padding:0; margin:0 0 0.6rem;
+                            color:var(--ink-3); }
+            .footnotes ol{ padding-left:1.6rem; }
+
+            /* Conflict markers — yellow rule on the left, never a fill */
+            .axon-conflict{ border-left:3px solid #c89800; padding:0.4rem 0.9rem;
+                             color:var(--ink-2); margin:0.6rem 0; }
+
+            /* Inline links */
+            a{ color:var(--ink); text-decoration-thickness:1px;
+                text-underline-offset:3px; text-decoration-color:var(--rule); }
+            a:hover{ color:var(--accent); text-decoration-color:var(--accent); }
+
+            /* Selection */
+            ::selection{ background:var(--accent); color:var(--paper); }
+
+            /* ─── PRINT — journal-quality "Save as PDF" output ─── */
+            @media print{
+              @page{ size:A4; margin:22mm 18mm; }
+              @page :first{ margin-top:30mm; }
+              html,body{ background:white; }
+              body{ max-width:none; margin:0; padding:0; font-size:10.5pt; line-height:1.45; }
+              h1{ font-size:18pt; }
+              h2{ font-size:13pt; page-break-after:avoid; }
+              h3{ font-size:11pt; page-break-after:avoid; }
+              h1,h2,h3,h4{ page-break-after:avoid; }
+              p,li,table,figure,blockquote,pre{ page-break-inside:avoid; }
+              table{ font-size:9.5pt; }
+              pre{ font-size:8.5pt; white-space:pre-wrap; word-wrap:break-word; }
+              a{ color:var(--ink); text-decoration:none; }
+              /* Show type annotations as small text in print, not as underlines */
+              [data-type]{ background:none; }
+              [data-type]::after{ font-size:0.65em; }
+              /* Hide footnotes' header — kept the list */
+              .footnotes h2{ display:none; }
+            }
         """).strip()
 
     def _render_node(self, node: Node) -> str:
@@ -1788,6 +1917,72 @@ def convert_axc_string(
         manifest.authors = authors
     content = parse_axc(axc_text)
     render = default_render_profile()
+    return AxonDocument(manifest=manifest, content=content, render=render)
+
+
+def parse_tdoc_archive(archive_bytes: bytes) -> AxonDocument:
+    """Open a .tdoc archive (deterministic ZIP) and reconstruct the document.
+
+    Round-trip contract: encode_archive(doc) followed by parse_tdoc_archive
+    on the resulting bytes returns a document that re-serializes to the same
+    .axc + manifest fields. Renders are restored when present, else the
+    default render profile is used.
+
+    Security: ZIP entries are size-checked and path-sanitised exactly as
+    other AXON archive readers do. Total uncompressed size is capped to
+    avoid zip-bomb attacks.
+    """
+    # Hard caps — same defence-in-depth posture as the rest of the codebase.
+    _MAX_ENTRIES = 1024
+    _MAX_UNCOMPRESSED = 64 * 1024 * 1024  # 64 MiB total after decompression
+
+    try:
+        zf = zipfile.ZipFile(io.BytesIO(archive_bytes))
+    except zipfile.BadZipFile as e:
+        raise AxonSecurityError(f"Not a valid .tdoc archive: {e}") from e
+
+    names = zf.namelist()
+    if len(names) > _MAX_ENTRIES:
+        raise AxonSecurityError(
+            f".tdoc has {len(names)} entries; cap is {_MAX_ENTRIES}"
+        )
+    total = sum(i.file_size for i in zf.infolist())
+    if total > _MAX_UNCOMPRESSED:
+        raise AxonSecurityError(
+            f".tdoc uncompressed size {total} exceeds {_MAX_UNCOMPRESSED}"
+        )
+    for name in names:
+        # Reject path traversal / absolute paths just like the canonical reader.
+        if name.startswith("/") or ".." in name.split("/"):
+            raise AxonSecurityError(f"Unsafe entry path: {name!r}")
+
+    if "manifest.json" not in names:
+        raise AxonSecurityError("missing manifest.json in .tdoc archive")
+    if "content/document.axc" not in names:
+        raise AxonSecurityError("missing content/document.axc in .tdoc archive")
+
+    manifest_dict = json.loads(zf.read("manifest.json").decode("utf-8"))
+    axc_text = zf.read("content/document.axc").decode("utf-8")
+    render_text = (
+        zf.read("render/default.axr").decode("utf-8")
+        if "render/default.axr" in names
+        else ""
+    )
+
+    # Rehydrate manifest. Missing fields fall back to dataclass defaults.
+    manifest = Manifest(
+        title=manifest_dict.get("title", "Untitled"),
+        document_type=manifest_dict.get("document_type", "article.research"),
+    )
+    for k, v in manifest_dict.items():
+        if hasattr(manifest, k) and not callable(getattr(manifest, k)):
+            try:
+                setattr(manifest, k, v)
+            except (AttributeError, TypeError):
+                pass
+
+    content = parse_axc(axc_text)
+    render = parse_axr(render_text) if render_text else default_render_profile()
     return AxonDocument(manifest=manifest, content=content, render=render)
 
 
