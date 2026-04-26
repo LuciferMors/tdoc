@@ -29,7 +29,8 @@ RUN pip install --no-cache-dir \
       python-multipart \
       PyMuPDF \
       orjson \
-      cryptography
+      cryptography \
+      "psycopg[binary,pool]>=3.2"
 
 # Copy application source.
 COPY axon.py ./

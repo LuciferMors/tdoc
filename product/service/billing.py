@@ -18,7 +18,6 @@ Webhook handler (to be added in production):
 
 from __future__ import annotations
 
-import os
 import secrets
 from dataclasses import dataclass
 
@@ -62,54 +61,41 @@ def make_plan(tier: str, api_key: str | None = None) -> Plan:
     )
 
 
-# ── In-memory store (dev only) ──────────────────────────────────────────────────
-_STORE: dict[str, Plan] = {}
-
-
-def _seed_dev_key() -> None:
-    """Seed a stable dev API key for local testing.
-
-    SECURITY: only runs when TDOC_ENV is unset ('dev' default) or 'dev'. In
-    production (TDOC_ENV=prod) no default keys exist — every key must come from
-    a Lemon Squeezy webhook creating a real subscription. This prevents the
-    known-key 'tdoc_dev_local' from accidentally working against a prod deploy
-    if the env var is misconfigured.
-    """
-    env = os.environ.get("TDOC_ENV", "dev")
-    if env != "dev":
-        return
-    dev_key = os.environ.get("TDOC_DEV_KEY", "tdoc_dev_local")
-    if dev_key not in _STORE:
-        _STORE[dev_key] = Plan(
-            api_key=dev_key,
-            tier="team",
-            units_included=TIER_SPECS["team"]["units_included"],
-            overage_price_cents=TIER_SPECS["team"]["overage_price_cents"],
-        )
-
-
-_seed_dev_key()
+# ── Storage backend ─────────────────────────────────────────────────────────────
+# Swappable: in-memory by default; Postgres (Supabase / Neon / Railway / RDS)
+# when DATABASE_URL is set. See product/service/store.py for the full rationale
+# — short version: HF Spaces have ephemeral filesystems, so a real customer's
+# API key cannot live in process memory.
 
 
 def get_principal(api_key: str) -> Plan | None:
-    return _STORE.get(api_key)
+    from product.service.store import get_store
+
+    return get_store().get(api_key)
 
 
 def register(tier: str) -> Plan:
-    """Provision a new API key on the given tier. Production: called by Stripe webhook."""
+    """Provision a new API key on the given tier. Production: called by Lemon Squeezy webhook."""
+    from product.service.store import get_store
+
     plan = make_plan(tier)
-    _STORE[plan.api_key] = plan
+    get_store().put(plan)
     return plan
 
 
 def record_units(plan: Plan, amount: int) -> None:
+    from product.service.store import get_store
+
     plan.units_used += amount
     if plan.units_used > plan.units_included:
         if plan.overage_price_cents == 0:
             # Roll back + hard-block.
             plan.units_used -= amount
+            # Persist the rollback so retries don't double-count.
+            get_store().update(plan)
             raise PlanQuotaExceeded(
                 f"Plan '{plan.tier}' quota exceeded "
                 f"({plan.units_included} units). Upgrade at /pricing."
             )
-        # Else: overage charged off-band — in production this would post to Stripe.
+        # Else: overage charged off-band — in production this would post to Lemon Squeezy.
+    get_store().update(plan)
