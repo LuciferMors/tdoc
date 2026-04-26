@@ -355,6 +355,25 @@ def parse_axc(text: str) -> Node:
             i += 1
             continue
 
+        # Multi-line attribute blocks: an @node line whose [ is opened but
+        # not yet closed on this line absorbs subsequent lines until the ]
+        # appears. Lets authors break long attribute lists across lines for
+        # readability without confusing the single-line node-decl regex.
+        if (
+            stripped.lstrip().startswith("@")
+            and "[" in stripped
+            and stripped.count("[") > stripped.count("]")
+        ):
+            buf = [stripped]
+            j = i + 1
+            opens = stripped.count("[") - stripped.count("]")
+            while j < len(lines) and opens > 0:
+                buf.append(lines[j])
+                opens += lines[j].count("[") - lines[j].count("]")
+                j += 1
+            stripped = " ".join(part.strip() for part in buf)
+            i = j - 1  # outer loop advances past the last consumed line
+
         indent = _indent_level(stripped)
         m = _NODE_DECL.match(stripped)
 

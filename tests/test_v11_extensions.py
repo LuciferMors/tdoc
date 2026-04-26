@@ -192,6 +192,26 @@ def test_view_warns_on_nonstandard_type():
 # ─── Roundtrip: serialize and re-parse keeps every v1.1 attribute ──
 
 
+def test_multiline_attribute_block_is_parsed():
+    """An @node whose [...] is broken across lines for readability must
+    parse identically to the single-line form. Without this, sample.axc
+    in the repo (and any author writing long result rows) would silently
+    drop attributes after the first line."""
+    multi = (
+        "@result [id=R1 metric=phase_coherence method=mann_whitney\n"
+        "         severe=0.349 normal=0.250 p_value=0.005 effect_size_r=0.43]:\n"
+        "  Severe vs normal cohorts.\n"
+    )
+    single = (
+        "@result [id=R1 metric=phase_coherence method=mann_whitney "
+        "severe=0.349 normal=0.250 p_value=0.005 effect_size_r=0.43]:\n"
+        "  Severe vs normal cohorts.\n"
+    )
+    a = _doc_with_axc(multi).content.to_dict()
+    b = _doc_with_axc(single).content.to_dict()
+    assert a == b
+
+
 def test_v11_roundtrip_preserves_attrs():
     axc = (
         "@finding [significance=0.001 type=primary validated=bootstrap]:\n"
