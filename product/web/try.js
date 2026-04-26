@@ -163,7 +163,12 @@
       }
     };
     $("download-btn").onclick = () => {
-      const blob = new Blob([data.axc || ""], { type: "text/plain" });
+      // application/octet-stream — opaque MIME — so the browser respects
+      // the `download` attribute filename verbatim. With text/plain, Safari
+      // and some Chromium variants append ".txt", producing "foo.axc.txt".
+      const blob = new Blob([data.axc || ""], {
+        type: "application/octet-stream",
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

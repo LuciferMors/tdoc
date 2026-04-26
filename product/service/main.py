@@ -34,11 +34,13 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from axon import (  # noqa: E402
+    compute_document_hashes,
     convert_axc_string,
     convert_pdf,
     execute_aql,
     parse_axc,
     serialize_axc,
+    serialize_axr,
     sign_document_ed25519,
     verify_document_ed25519,
     validate,
@@ -328,6 +330,7 @@ async def structure(
         raise HTTPException(status_code=400, detail=f"Unsafe input: {e}")
 
     axc = serialize_axc(doc.content)
+    axr = serialize_axr(doc.render)
     node_count = _count_nodes(doc.content)
 
     try:
@@ -335,11 +338,15 @@ async def structure(
     except PlanQuotaExceeded as e:
         raise HTTPException(status_code=402, detail=str(e))
 
+    # The conversion path doesn't populate manifest hashes — those land only
+    # when archiving. Compute them on the fly so the API response always has
+    # real fingerprints (otherwise the UI shows empty strings).
+    content_hash, render_hash = compute_document_hashes(axc, axr)
     result = validate(doc)
     return StructureResponse(
         document_id=doc.manifest.document_id,
-        content_hash=doc.manifest.content_hash or "",
-        render_hash=doc.manifest.render_hash or "",
+        content_hash=content_hash,
+        render_hash=render_hash,
         axc=axc,
         nodes=node_count,
         warnings=result.warnings,
@@ -357,7 +364,11 @@ _TRY_MAX_BYTES = 5 * 1024 * 1024
 async def try_public(
     file: UploadFile = File(...),
     title: str = Form("Demo"),
-    document_type: str = Form("article.research"),
+    # "preprint" has no required-section schema, so a 1-paragraph demo
+    # input doesn't trigger 4 alarming "expected section X not found"
+    # warnings. The authenticated /v1/structure path keeps article.research
+    # as the default since real callers know what they're submitting.
+    document_type: str = Form("preprint"),
 ) -> StructureResponse:
     blob = await file.read()
     if len(blob) > _TRY_MAX_BYTES:
@@ -396,12 +407,14 @@ async def try_public(
         raise HTTPException(status_code=400, detail=f"Unsafe input: {e}")
 
     axc = serialize_axc(doc.content)
+    axr = serialize_axr(doc.render)
     node_count = _count_nodes(doc.content)
+    content_hash, render_hash = compute_document_hashes(axc, axr)
     result = validate(doc)
     return StructureResponse(
         document_id=doc.manifest.document_id,
-        content_hash=doc.manifest.content_hash or "",
-        render_hash=doc.manifest.render_hash or "",
+        content_hash=content_hash,
+        render_hash=render_hash,
         axc=axc,
         nodes=node_count,
         warnings=result.warnings,

@@ -172,3 +172,40 @@ def test_try_public_ignores_authorization_header():
         files=files,
     )
     assert r.status_code == 200, r.text
+
+
+def test_try_public_returns_real_hashes():
+    # The demo response must carry actual content + render hashes — not
+    # empty strings — so the UI shows real fingerprints, not "—".
+    axc = b"@paragraph:\n  hi.\n"
+    files = {"file": ("in.axc", axc, "text/plain")}
+    r = client.post("/v1/try-public", files=files)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["content_hash"] and len(body["content_hash"]) >= 16
+    assert body["render_hash"]
+
+
+def test_try_public_default_doc_type_does_not_warn_about_sections():
+    # Demo endpoint defaults to document_type=preprint so a 1-paragraph
+    # input doesn't trigger spammy "Expected section X" warnings.
+    axc = b"@paragraph:\n  short demo input.\n"
+    files = {"file": ("in.axc", axc, "text/plain")}
+    r = client.post("/v1/try-public", files=files)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    section_warnings = [w for w in body["warnings"] if "Expected section" in w]
+    assert section_warnings == []
+
+
+def test_structure_response_carries_real_hashes():
+    # The authenticated path must also return non-empty hashes — the UI
+    # treats them as fingerprints, not optional metadata.
+    axc = b'@section [id="hello"]:\n  @paragraph:\n    Hi.\n'
+    files = {"file": ("in.axc", axc, "text/plain")}
+    data = {"title": "Hello", "document_type": "article.test"}
+    r = client.post("/v1/structure", headers=AUTH, files=files, data=data)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["content_hash"] and len(body["content_hash"]) >= 16
+    assert body["render_hash"]

@@ -168,11 +168,14 @@ pre.axc .typed{ background: var(--oxblood-wash); border-bottom: 1px solid var(--
 </section>
 
 <section>
-  <label class="drop" id="drop" tabindex="0" aria-label="Upload a document">
+  <!-- Not a <label> wrapping the input, because the browser's native
+       label-input click association would fire alongside the JS click
+       handler in try.js and open the file picker twice. -->
+  <div class="drop" id="drop" role="button" tabindex="0" aria-label="Upload a document">
     <p class="drop__title">Drop a <em>.pdf</em>, <em>.axc</em>, <em>.txt</em>, or <em>.md</em> here</p>
     <p class="drop__hint">— or click to choose a file —</p>
     <input type="file" id="file" accept=".pdf,.axc,.txt,.md,application/pdf,text/plain,text/markdown">
-  </label>
+  </div>
 
   <p class="status" id="status" data-state="idle"></p>
 
