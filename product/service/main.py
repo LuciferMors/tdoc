@@ -40,8 +40,10 @@ from axon import (  # noqa: E402
     convert_axc_string,
     convert_pdf,
     encode_archive_to_bytes,
+    encode_pdf_with_axon,
     execute_aql,
     parse_axc,
+    parse_pdf_with_axon,
     parse_tdoc_archive,
     render_html,
     serialize_axc,
@@ -141,6 +143,11 @@ class StructureResponse(BaseModel):
     html: str = ""
     tree: dict = {}
     archive_b64: str = ""
+    # PDF-as-container: a real PDF that opens in any viewer, with the AXON
+    # tree embedded inside as PDF/A-3-style attachments. This is the
+    # universal-compatibility download — single file, looks like every
+    # other PDF, AI tools extract the structured data via PDF embedded files.
+    pdf_b64: str = ""
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -308,12 +315,15 @@ def _count_nodes(node) -> int:
 
 def _build_rich_response(doc) -> StructureResponse:
     """Common path for /v1/structure and /v1/try-public — packs the same
-    document into the four artifacts a buyer or agent might want:
+    document into the five artifacts a buyer or agent might want:
 
-      - axc        : canonical text serialization (the format authors' view)
-      - html       : rendered HTML preview (the human's view)
-      - tree       : pure JSON tree (the LLM's view — no parser required)
-      - archive_b64: base64 of the deterministic .tdoc archive (the product)
+      - axc        : canonical text serialization (format-author view)
+      - html       : rendered HTML preview (human view)
+      - tree       : pure JSON tree (LLM view — no parser required)
+      - archive_b64: base64 of the deterministic .tdoc ZIP (power-user view)
+      - pdf_b64    : base64 of the PDF-as-container (universal-compat view) —
+                     a real PDF that opens in any viewer, with the AXON tree
+                     embedded inside as PDF/A-3-style attachments.
 
     Plus the integrity hashes and validator warnings.
     """
@@ -326,6 +336,16 @@ def _build_rich_response(doc) -> StructureResponse:
     tree = doc.content.to_dict()
     archive_bytes = encode_archive_to_bytes(doc)
     archive_b64 = base64.b64encode(archive_bytes).decode("ascii")
+
+    # PDF generation can fail if PyMuPDF Story chokes on extreme HTML;
+    # don't kill the whole response just because the PDF builder errored.
+    pdf_b64 = ""
+    try:
+        pdf_bytes = encode_pdf_with_axon(doc)
+        pdf_b64 = base64.b64encode(pdf_bytes).decode("ascii")
+    except Exception:  # noqa: BLE001 — graceful degrade
+        pdf_b64 = ""
+
     result = validate(doc)
     return StructureResponse(
         document_id=doc.manifest.document_id,
@@ -337,6 +357,7 @@ def _build_rich_response(doc) -> StructureResponse:
         html=html,
         tree=tree,
         archive_b64=archive_b64,
+        pdf_b64=pdf_b64,
     )
 
 
@@ -355,21 +376,28 @@ async def structure(
     suffix = (file.filename or "").lower()
     try:
         if suffix.endswith(".pdf"):
-            # Write to a secure temp file (random name, 0600 perms) so
-            # convert_pdf can open it by path. delete=False because we pass
-            # the closed path to convert_pdf; we remove it in the finally.
-            with tempfile.NamedTemporaryFile(
-                prefix="axon_in_", suffix=".pdf", delete=False
-            ) as tf:
-                tf.write(blob)
-                tmp = tf.name
+            # First try parsing as a tdoc-flavoured PDF (one we generated
+            # earlier with AXON embedded inside). If it has axon-content.axc
+            # as an embedded file we can do a perfect round-trip; otherwise
+            # fall back to the OCR-style text extraction path.
             try:
-                doc = convert_pdf(tmp, title=title, document_type=document_type)
-            finally:
+                doc = parse_pdf_with_axon(blob)
+            except AxonSecurityError:
+                # Vanilla PDF — extract text via convert_pdf. Write to a
+                # secure temp file (random name, 0600 perms) so the parser
+                # can open it by path; delete in the finally clause.
+                with tempfile.NamedTemporaryFile(
+                    prefix="axon_in_", suffix=".pdf", delete=False
+                ) as tf:
+                    tf.write(blob)
+                    tmp = tf.name
                 try:
-                    os.remove(tmp)
-                except OSError:
-                    pass
+                    doc = convert_pdf(tmp, title=title, document_type=document_type)
+                finally:
+                    try:
+                        os.remove(tmp)
+                    except OSError:
+                        pass
         elif suffix.endswith((".axc", ".txt", ".md")):
             doc = convert_axc_string(
                 blob.decode("utf-8"), title=title, document_type=document_type

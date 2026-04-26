@@ -143,17 +143,17 @@ iframe.preview{width:100%;height:78vh;border:0;background:white;display:block}
 <main class="column">
 
 <section class="hero">
-  <p class="eyebrow">Open any .tdoc · in the browser · no install</p>
-  <h1>The universal <em>.tdoc viewer.</em></h1>
-  <p>Drop a <code>.tdoc</code> archive you saved from <a href="/try">/try</a>, or paste a URL to one. The viewer renders the document with journal-quality typography. Click <em>Print</em> in the toolbar to save as a PDF — your browser does the conversion, no server needed.</p>
+  <p class="eyebrow">Open any tdoc-flavoured PDF · in the browser · no install</p>
+  <h1>The universal <em>tdoc viewer.</em></h1>
+  <p>Drop a <code>.pdf</code> downloaded from <a href="/try">/try</a> (or any PDF that has AXON embedded inside) and the viewer renders it with journal-quality typography. The structural data round-trips out of the PDF, into the AXON tree, and back into a freshly-rendered preview. Same file, two audiences.</p>
 </section>
 
 <section>
   <div class="inputs">
     <div class="input-card" id="drop-card">
-      <p class="input-card__title">Drop a <em>.tdoc</em> file</p>
+      <p class="input-card__title">Drop a <em>.pdf</em> or <em>.tdoc</em></p>
       <p class="input-card__hint">— or click to choose —</p>
-      <input type="file" id="file-input" accept=".tdoc,application/zip,application/x-tdoc">
+      <input type="file" id="file-input" accept=".pdf,.tdoc,.axc,application/pdf,application/zip">
       <button type="button" id="file-btn">Choose file</button>
     </div>
 
@@ -176,7 +176,8 @@ iframe.preview{width:100%;height:78vh;border:0;background:white;display:block}
     <div class="frame-toolbar">
       <span id="frame-title">Document</span>
       <span>
-        <button type="button" id="print-btn" class="primary">Print / Save as PDF</button>
+        <button type="button" id="download-pdf-btn" class="primary">Download .pdf</button>
+        <button type="button" id="print-btn">Print</button>
         <button type="button" id="reload-btn">Reload</button>
       </span>
     </div>

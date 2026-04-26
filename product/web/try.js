@@ -252,29 +252,24 @@
     }
   });
 
-  on("print-btn", () => {
-    if (!lastData || !lastData.html) {
-      setStatus("nothing to print yet — upload a document first", "error");
+  // Primary download: a real PDF that opens in any viewer, with AXON
+  // embedded as PDF/A-3-style attachments. Single file, universal compat.
+  on("download-pdf-btn", () => {
+    if (!lastData || !lastData.pdf_b64) {
+      setStatus("no PDF on this response — try again", "error");
       return;
     }
-    // Open a fresh window with the rendered HTML and trigger native print.
-    // Blob URL keeps the print document isolated from this page's CSP.
-    const printedHtml = lastData.html.replace(
-      "</body>",
-      '<script>window.addEventListener("load",function(){setTimeout(function(){window.print();},120);window.addEventListener("afterprint",function(){window.close();});});<\/script></body>'
-    );
-    const blob = new Blob([printedHtml], { type: "text/html;charset=utf-8" });
+    const bytes = b64ToBytes(lastData.pdf_b64);
+    const blob = new Blob([bytes], { type: "application/pdf" });
     const url = URL.createObjectURL(blob);
-    const w = window.open(url, "_blank", "noopener");
-    if (!w) {
-      setStatus(
-        "your browser blocked the print window — allow popups for tdoc.xyz",
-        "error"
-      );
-      URL.revokeObjectURL(url);
-      return;
-    }
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download =
+      (lastSourceName.replace(/\.[^.]+$/, "") || "document") + ".pdf";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   });
 
   on("download-tdoc-btn", () => {

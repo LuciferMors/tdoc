@@ -291,3 +291,82 @@ def test_try_public_rejects_corrupt_tdoc():
     # Either 400 (AxonSecurityError caught) or 500 (unhandled) — must be a
     # 4xx so the client gets a clean error, never a stack trace.
     assert 400 <= r.status_code < 500, r.text
+
+
+# ─── PDF-as-container — the universal-compat download ──────────
+
+
+def test_try_public_returns_pdf_with_embedded_axon():
+    """The response must include a real PDF containing an axon-content.axc
+    embedded file. This is the universal download — opens in Preview /
+    Acrobat / browser as a normal PDF, AI tools extract AXON via the
+    embedded-files API."""
+    import base64
+
+    pytest.importorskip("pymupdf")
+    import pymupdf as fitz
+
+    axc = (
+        b'@section [id="intro"]:\n'
+        b"  @heading [level=1]:\n"
+        b"    A short paper\n"
+        b"  @paragraph:\n"
+        b"    With a body.\n"
+    )
+    r = client.post("/v1/try-public", files={"file": ("in.axc", axc, "text/plain")})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    pdf_b64 = body.get("pdf_b64") or ""
+    assert pdf_b64, "pdf_b64 must be non-empty"
+    pdf_bytes = base64.b64decode(pdf_b64)
+    assert pdf_bytes.startswith(b"%PDF"), "must begin with the PDF magic"
+
+    pdf = fitz.open(stream=pdf_bytes, filetype="pdf")
+    names = {pdf.embfile_info(i)["filename"] for i in range(pdf.embfile_count())}
+    assert "axon-content.axc" in names
+    assert "axon-manifest.json" in names
+
+
+def test_try_public_pdf_roundtrip():
+    """Upload .axc → server returns a PDF with embedded AXON → re-upload
+    that PDF → server detects the embedded AXON and round-trips back to
+    the same content. This is the full universal-container contract."""
+    import base64
+
+    pytest.importorskip("pymupdf")
+
+    axc = b'@section [id="hi"]:\n' b"  @paragraph:\n" b"    Roundtrip via PDF.\n"
+    r1 = client.post("/v1/try-public", files={"file": ("in.axc", axc, "text/plain")})
+    assert r1.status_code == 200, r1.text
+    pdf_bytes = base64.b64decode(r1.json()["pdf_b64"])
+    assert pdf_bytes.startswith(b"%PDF")
+
+    r2 = client.post(
+        "/v1/try-public",
+        files={"file": ("downloaded.pdf", pdf_bytes, "application/pdf")},
+    )
+    assert r2.status_code == 200, r2.text
+    assert "Roundtrip via PDF" in r2.json()["axc"]
+
+
+def test_try_public_falls_back_for_vanilla_pdf():
+    """A PDF without embedded AXON must still parse via the OCR-style
+    convert_pdf path — never 4xx just because it's not tdoc-flavoured."""
+    pytest.importorskip("pymupdf")
+    import pymupdf as fitz
+    import io as _io
+
+    # Build a tiny PDF in-memory with no embedded files.
+    pdf = fitz.open()
+    page = pdf.new_page(width=595, height=842)  # A4
+    page.insert_text((72, 72), "Vanilla paper, no AXON inside.", fontsize=12)
+    buf = _io.BytesIO()
+    pdf.save(buf)
+    vanilla_pdf = buf.getvalue()
+
+    r = client.post(
+        "/v1/try-public",
+        files={"file": ("vanilla.pdf", vanilla_pdf, "application/pdf")},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["nodes"] >= 1

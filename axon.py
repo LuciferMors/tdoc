@@ -1920,6 +1920,178 @@ def convert_axc_string(
     return AxonDocument(manifest=manifest, content=content, render=render)
 
 
+def encode_pdf_with_axon(doc: AxonDocument) -> bytes:
+    """Render an AxonDocument as a PDF *with the AXON tree embedded inside*.
+
+    This is the "PDF/A-3" pattern (the same pattern ZUGFeRD invoices use to
+    embed XML and PMC papers use to embed JATS): the visual layer is a
+    normal PDF that opens in every viewer; the structural layer is a set of
+    file attachments inside the PDF that AI tools and AXON-aware readers
+    can pull out with a single embedded-files API call.
+
+    Embedded files (canonical names):
+      axon-manifest.json     — manifest dict, JSON
+      axon-content.axc       — canonical .axc serialization
+      axon-render.axr        — render profile, .axr text (when present)
+      axon-signature.json    — hash-integrity record (Ed25519 if cryptography is available)
+      axon-spec-pointer.txt  — one-liner pointing to the AXON spec URL
+
+    Output is a single byte-string; callers write it to disk or return it
+    over HTTP. The .pdf file IS the .tdoc archive — same data, different
+    container, universally compatible.
+    """
+    try:
+        import pymupdf as fitz  # type: ignore[import-not-found]
+    except ImportError as e:  # pragma: no cover
+        raise RuntimeError(
+            "encode_pdf_with_axon needs PyMuPDF — add 'PyMuPDF>=1.23' to requirements."
+        ) from e
+
+    # 1. Build the canonical AXON artifacts that will be embedded.
+    content_axc = serialize_axc(doc.content)
+    render_axr = serialize_axr(doc.render)
+    content_hash, render_hash = compute_document_hashes(content_axc, render_axr)
+    doc.manifest.content_hash = content_hash
+    doc.manifest.render_hash = render_hash
+    manifest_dict = doc.manifest.to_dict()
+    signature = sign_document(content_axc, render_axr, manifest_dict)
+
+    # 2. Render the document HTML and lay it out into PDF pages via Story.
+    html = render_html(doc)
+    buf = io.BytesIO()
+    writer = fitz.DocumentWriter(buf)
+    A4 = fitz.paper_rect("A4")
+    margin = 56  # ~20 mm — matches the @page margin in the print stylesheet
+    where = fitz.Rect(margin, margin, A4.width - margin, A4.height - margin)
+    story = fitz.Story(html=html)
+    more = 1
+    pages = 0
+    # Cap at 200 pages — defence in depth against pathological inputs.
+    while more and pages < 200:
+        dev = writer.begin_page(A4)
+        more, _filled = story.place(where)
+        story.draw(dev, fitz.Identity)
+        writer.end_page()
+        pages += 1
+    writer.close()
+
+    # 3. Re-open the PDF to attach embedded files + write XMP metadata.
+    pdf = fitz.open(stream=buf.getvalue(), filetype="pdf")
+
+    pdf.set_metadata(
+        {
+            "title": doc.manifest.title or "Untitled",
+            "author": ", ".join(
+                a.get("name", "") for a in (doc.manifest.authors or []) if a.get("name")
+            )
+            or "",
+            "subject": doc.manifest.document_type or "",
+            "keywords": "AXON, tdoc, structured-document, ai-readable",
+            "producer": "tdoc",
+            "creator": "tdoc",
+        }
+    )
+
+    def _embed(name: str, data: bytes, desc: str) -> None:
+        pdf.embfile_add(name, data, ufilename=name, desc=desc)
+
+    _embed(
+        "axon-manifest.json",
+        json.dumps(manifest_dict, sort_keys=True, indent=2, ensure_ascii=False).encode(
+            "utf-8"
+        ),
+        "AXON manifest — document_id, hashes, declared types",
+    )
+    _embed(
+        "axon-content.axc",
+        content_axc.encode("utf-8"),
+        "AXON content notation — the structural source of truth",
+    )
+    _embed(
+        "axon-render.axr",
+        render_axr.encode("utf-8"),
+        "AXON render profile — typography + layout hints",
+    )
+    _embed(
+        "axon-signature.json",
+        json.dumps([signature], sort_keys=True, indent=2, ensure_ascii=False).encode(
+            "utf-8"
+        ),
+        "AXON integrity record — hash of the canonical signing payload",
+    )
+    _embed(
+        "axon-spec-pointer.txt",
+        (
+            "AXON format v1.0 - "
+            "https://github.com/LuciferMors/tdoc/blob/main/AXON_Format_Specification.txt\n"
+        ).encode("utf-8"),
+        "Pointer to the AXON specification",
+    )
+
+    # 4. Save with garbage collection + deflate so the PDF stays compact.
+    out = io.BytesIO()
+    pdf.save(out, garbage=4, deflate=True, clean=True)
+    return out.getvalue()
+
+
+def parse_pdf_with_axon(pdf_bytes: bytes) -> AxonDocument:
+    """Open a PDF, extract the embedded AXON files, reconstruct the document.
+
+    Round-trip contract: encode_pdf_with_axon(doc) followed by this function
+    yields a document that re-serializes to the same content_hash. PDFs
+    without an axon-content.axc attachment raise AxonSecurityError (so the
+    upload pipeline returns a clean 4xx, not a stack trace).
+    """
+    try:
+        import pymupdf as fitz  # type: ignore[import-not-found]
+    except ImportError as e:  # pragma: no cover
+        raise RuntimeError(
+            "parse_pdf_with_axon needs PyMuPDF — add 'PyMuPDF>=1.23' to requirements."
+        ) from e
+
+    try:
+        pdf = fitz.open(stream=pdf_bytes, filetype="pdf")
+    except Exception as e:
+        raise AxonSecurityError(f"Not a valid PDF: {e}") from e
+
+    # Locate axon-content.axc among the embedded files.
+    names = {pdf.embfile_info(i)["filename"]: i for i in range(pdf.embfile_count())}
+    if "axon-content.axc" not in names:
+        raise AxonSecurityError(
+            "PDF has no axon-content.axc embedded file — not a tdoc-flavoured PDF"
+        )
+
+    content_axc = pdf.embfile_get(names["axon-content.axc"]).decode("utf-8")
+    render_axr = (
+        pdf.embfile_get(names["axon-render.axr"]).decode("utf-8")
+        if "axon-render.axr" in names
+        else ""
+    )
+    manifest_dict: dict = {}
+    if "axon-manifest.json" in names:
+        try:
+            manifest_dict = json.loads(
+                pdf.embfile_get(names["axon-manifest.json"]).decode("utf-8")
+            )
+        except (UnicodeDecodeError, ValueError):
+            manifest_dict = {}
+
+    manifest = Manifest(
+        title=manifest_dict.get("title", "Untitled"),
+        document_type=manifest_dict.get("document_type", "article.research"),
+    )
+    for k, v in manifest_dict.items():
+        if hasattr(manifest, k) and not callable(getattr(manifest, k)):
+            try:
+                setattr(manifest, k, v)
+            except (AttributeError, TypeError):
+                pass
+
+    content = parse_axc(content_axc)
+    render = parse_axr(render_axr) if render_axr else default_render_profile()
+    return AxonDocument(manifest=manifest, content=content, render=render)
+
+
 def parse_tdoc_archive(archive_bytes: bytes) -> AxonDocument:
     """Open a .tdoc archive (deterministic ZIP) and reconstruct the document.
 
