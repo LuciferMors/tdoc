@@ -1,11 +1,17 @@
 # AXON — Document Format · powers **tdoc** (https://tdoc.xyz)
 
-Deterministic, semantic, signable document archives. A clean break from PDF / DOCX / HTML.
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/LuciferMors/tdoc/blob/main/examples/quickstart.ipynb)
+[![PyPI](https://img.shields.io/pypi/v/axon-document.svg)](https://pypi.org/project/axon-document/)
+[![Observatory](https://img.shields.io/badge/Observatory-A%2B%20125-7a0c1a)](https://developer.mozilla.org/en-US/observatory/analyze?host=tdoc.xyz)
 
-- **Spec**: `AXON_Format_Specification.txt` — v1.0 design draft.
-- **Reference impl**: `axon.py` — single-file Python reference (~1800 lines).
-- **Demo**: `demo.py` — runs the full pipeline end-to-end.
-- **Product** (commercial API on top): `product/` — see `product/README.md`.
+Deterministic, semantic, signable documents. A `.pdf` you can open in every viewer on the planet — with the typed AXON tree embedded inside so AI tools extract structure without rendering.
+
+- **Try in 5 seconds**: https://tdoc.xyz/try — drop a PDF, get a typed PDF back.
+- **View any tdoc-flavoured PDF**: https://tdoc.xyz/view
+- **Spec**: [`AXON_Format_Specification.txt`](AXON_Format_Specification.txt) — v1.0 core + v1.1 semantic research blocks. Rendered: https://tdoc.xyz/spec
+- **Reference impl**: `axon.py` — single-file Python reference (~2000 lines).
+- **Quickstart**: `examples/quickstart.ipynb` — install → typed paper → query → render → sign, in 30 seconds. [Open in Colab](https://colab.research.google.com/github/LuciferMors/tdoc/blob/main/examples/quickstart.ipynb).
+- **Product** (hosted API): `product/` — see `product/README.md`.
 
 ## The AXON format vs the `.tdoc` file extension
 

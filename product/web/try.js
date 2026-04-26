@@ -10,6 +10,9 @@
   const MAX_BYTES = 5 * 1024 * 1024;
 
   const $ = (id) => document.getElementById(id);
+  const track = (e, p) => {
+    try { if (typeof window.tdocTrack === "function") window.tdocTrack(e, p); } catch (e) { /* never throw on telemetry */ }
+  };
   const drop = $("drop");
   const file = $("file");
   const status = $("status");
@@ -104,6 +107,7 @@
 
   function setTab(name) {
     if (!TABS.includes(name)) return;
+    if (activeTab !== name) track("try_tab_switched", { tab: name });
     activeTab = name;
     TABS.forEach((t) => {
       const btn = $("tab-btn-" + t);
@@ -148,6 +152,10 @@
     busy = true;
     results.dataset.shown = "false";
     setStatus("uploading " + f.name + "…", "loading");
+    track("try_uploaded", {
+      ext: (f.name.match(/\.([a-z0-9]+)$/i) || ["", ""])[1].toLowerCase(),
+      size_kb: Math.round(f.size / 1024),
+    });
 
     const fd = new FormData();
     fd.append("file", f);
@@ -259,6 +267,7 @@
       setStatus("no PDF on this response — try again", "error");
       return;
     }
+    track("try_downloaded", { format: "pdf" });
     const bytes = b64ToBytes(lastData.pdf_b64);
     const blob = new Blob([bytes], { type: "application/pdf" });
     const url = URL.createObjectURL(blob);
@@ -277,6 +286,7 @@
       setStatus("no archive on this response — try again", "error");
       return;
     }
+    track("try_downloaded", { format: "tdoc" });
     const bytes = b64ToBytes(lastData.archive_b64);
     // application/zip is the underlying container; .tdoc filename is the
     // brand. application/octet-stream would also work; zip is more honest

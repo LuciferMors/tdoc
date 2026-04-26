@@ -1,0 +1,57 @@
+{
+  "name": "@tdoc/sdk",
+  "version": "0.1.0",
+  "description": "Official TypeScript / JavaScript SDK for tdoc.xyz — the typed-document API. Convert PDFs into AXON trees, render journal-grade HTML/PDF, sign + verify Ed25519 documents.",
+  "license": "Apache-2.0",
+  "author": "tdoc <hello@tdoc.xyz>",
+  "homepage": "https://tdoc.xyz",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LuciferMors/tdoc.git",
+    "directory": "sdks/ts"
+  },
+  "bugs": {
+    "url": "https://github.com/LuciferMors/tdoc/issues"
+  },
+  "keywords": [
+    "tdoc",
+    "axon",
+    "documents",
+    "pdf",
+    "ai",
+    "llm",
+    "structured-documents",
+    "typed-data",
+    "ed25519",
+    "scientific-papers"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean --target node18",
+    "test": "node --test test/*.test.mjs",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0"
+  }
+}

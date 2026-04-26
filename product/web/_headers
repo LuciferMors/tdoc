@@ -32,7 +32,7 @@
   # - frame-ancestors 'none': clickjacking defense (covers older browsers too)
   # - form-action 'self' lemonsqueezy.com: only our site and LS checkout
   # - upgrade-insecure-requests: force http→https automatically
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.tdoc.xyz; frame-ancestors 'none'; form-action 'self' https://tdoc.lemonsqueezy.com https://*.lemonsqueezy.com; base-uri 'self'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.tdoc.xyz https://eu.i.posthog.com https://us.i.posthog.com https://app.posthog.com; frame-ancestors 'none'; form-action 'self' https://tdoc.lemonsqueezy.com https://*.lemonsqueezy.com; base-uri 'self'; upgrade-insecure-requests
 
   # Cross-origin isolation defaults — defense in depth against side-channel leaks.
   Cross-Origin-Opener-Policy: same-origin
@@ -54,6 +54,12 @@
   Cache-Control: public, max-age=300, must-revalidate
 
 /theme.js
+  Cache-Control: public, max-age=300, must-revalidate
+
+/analytics.js
+  Cache-Control: public, max-age=300, must-revalidate
+
+/view.js
   Cache-Control: public, max-age=300, must-revalidate
 
 # robots.txt + sitemap.xml deserve their proper MIME types and a daily cache.

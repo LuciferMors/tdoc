@@ -773,6 +773,160 @@ This is a format for the next fifty years.
 
 
 ═══════════════════════════════════════════════════════════════════
+PART TWENTY-THREE: AXON v1.1 — SEMANTIC RESEARCH BLOCKS (NORMATIVE)
+═══════════════════════════════════════════════════════════════════
+
+AXON v1.0 expressed a document as a tree of nodes whose semantics were determined by their type and a small set of attributes. v1.1 adds eight node types whose purpose is to make a research document a queryable knowledge object — not just a paper that happens to be parseable. These node types are entirely additive: a v1.0 reader sees them as unknown elements and renders their text content with an "unknown element type" indicator; a v1.1 reader extracts their structured fields directly.
+
+A v1.1 reader must implement every node type in this section. Unknown attributes on these nodes must be preserved (round-trip stable) but may be ignored when rendering. The attributes listed as REQUIRED are soft requirements at the validator level: a missing one produces a warning, not an error, so an in-progress draft still validates while the author is alerted.
+
+
+─── @finding ───────────────────────────────────────────────────────
+
+A claim the document is making that is supported by an analysis. Examples: "the treated cohort survived longer", "the proposed model outperforms the baseline".
+
+  @finding [type=primary significance=0.005 validated=permutation]:
+    Severe-state coherence is elevated relative to controls.
+
+REQUIRED attributes:
+  type            One of: primary | secondary | exploratory.
+  significance    The statistical significance of the finding, typically a
+                  p-value as a string ("0.005", "<0.001"). Free-text accepted
+                  for non-frequentist evidence.
+OPTIONAL:
+  id              Stable identifier for cross-references.
+  validated       Method by which the finding survives a robustness check
+                  (permutation, bootstrap, holdout, replicate, none).
+  cohort          Identifier of the cohort the finding applies to.
+
+A finding is the output of an analysis, not an analysis itself. To express the analysis, use @result.
+
+
+─── @hypothesis ─────────────────────────────────────────────────────
+
+A claim the document set out to test, before it knew the answer. Distinguishable from a finding by its temporal relationship to evidence.
+
+  @hypothesis [id=H1 status=supported]:
+    Subjects with severe dysglycemia exhibit elevated cross-frequency
+    phase coherence between glucose and HRV bands.
+
+REQUIRED:
+  id              Stable identifier so @link nodes can reference it.
+OPTIONAL:
+  status          One of: proposed | supported | rejected | inconclusive.
+                  Defaults to "proposed".
+
+The author should not retroactively edit a hypothesis to match the result. The id makes the original prediction citeable; the status reflects the verdict the evidence reaches.
+
+
+─── @result ─────────────────────────────────────────────────────────
+
+A specific quantitative measurement the document is reporting. Distinct from @finding (which is the interpretive claim) and @data (which is the raw bytes).
+
+  @result [id=R1 metric=phase_coherence method=mann_whitney
+           severe=0.349 normal=0.250 p_value=0.005 effect_size_r=0.43]:
+    Cohort-level coherence comparison.
+
+REQUIRED:
+  metric          The thing being measured. Should match a known glossary
+                  entry where one exists; otherwise free-text is acceptable.
+OPTIONAL:
+  id              Stable identifier.
+  method          The statistical or computational method used.
+  Any other attribute is treated as a key/value pair belonging to the
+  result and rendered in a definition list. AI extraction reads each
+  attribute as data-{name}="{value}" on the rendered element.
+
+
+─── @metric ─────────────────────────────────────────────────────────
+
+A single quantity that may appear inline (in running prose) or as a block.
+
+  @metric [name=mass value=28.4 unit=g group=treated]:
+
+REQUIRED:
+  name            The label for the quantity.
+OPTIONAL:
+  value           The numeric value. May also be the node's text content.
+  unit            SI or descriptive unit string.
+  group           Cohort, condition, or arm the metric belongs to.
+
+Use @metric for individual numbers; use @result when several numbers belong together as one observation.
+
+
+─── @narrative ──────────────────────────────────────────────────────
+
+A passage of prose tagged by the rhetorical role it plays in the document. Lets a summarising reader (human or AI) extract just the motivation, just the limitations, just the future-work plan, etc.
+
+  @narrative [role=motivation]:
+    PDFs lose semantic ground truth as soon as they're rendered.
+
+REQUIRED:
+  role            One of: motivation | mechanism_explanation |
+                  clinical_implication | limitation | future_work | summary.
+                  Implementations should preserve other roles round-trip
+                  even when they don't recognise them.
+
+
+─── @code_ref ───────────────────────────────────────────────────────
+
+A reproducibility hook. Points to executable code that produced the document's findings or can re-run the analysis from raw data.
+
+  @code_ref [repo=github.com/LuciferMors/coherence-pipeline
+             script=analyses/phase_coherence.py
+             commit=a1b2c3d
+             reproducible=true]:
+
+REQUIRED:
+  repo            The repository, as a URL or owner/name shorthand.
+OPTIONAL:
+  script          Path to the script within the repo.
+  commit          Git commit SHA — pins the exact version of the code.
+  reproducible    "true" if the code, given the same inputs, deterministically
+                  reproduces the result. "false" otherwise.
+
+
+─── @link ───────────────────────────────────────────────────────────
+
+A cross-reference between any two nodes that turns the document's tree of paragraphs into a graph of relationships.
+
+  @link [from=H1 to=R1 type=validated_by]:
+
+REQUIRED:
+  from            id of the source node.
+  to              id of the target node.
+  type            The relationship. Standard types:
+                    validated_by, derived_from, refutes, supports,
+                    contradicts, implements, cites, related.
+
+A document may contain any number of @link nodes. v1.1 readers should index them so the document can be queried as a graph.
+
+
+─── @view ───────────────────────────────────────────────────────────
+
+A document-level declaration of the views that this document is suited to be presented in.
+
+  @view [type=linear]:
+  @view [type=summary]:
+  @view [type=graph]:
+
+REQUIRED:
+  type            One of: linear | graph | summary | outline | data.
+
+A v1.1 reader presents the user with the declared views as switchable modes:
+  linear   — read top-to-bottom (what a PDF gives you).
+  summary  — abstract + findings + clinical_implication + limitation only.
+  outline  — sections + headings + finding/result badges, no body prose.
+  graph    — render @link edges over @hypothesis / @finding / @result nodes.
+  data     — JSON tree of metrics + results, no prose.
+
+
+─── Forward compatibility notes ─────────────────────────────────────
+
+A v1.0 reader encountering any v1.1 node type renders it as @aside, preserving the text content and surface attributes but losing the semantic role. A v1.1-aware downstream reader, given the same document, can extract findings, hypotheses, results, code references, narrative roles, and the link graph without re-parsing prose.
+
+
+═══════════════════════════════════════════════════════════════════
 END OF SPECIFICATION
-AXON Document Format v1.0
+AXON Document Format v1.0 (core) + v1.1 (semantic research blocks)
 ═══════════════════════════════════════════════════════════════════

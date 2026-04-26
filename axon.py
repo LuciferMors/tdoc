@@ -43,7 +43,7 @@ from typing import Any, Dict, List, Optional, Tuple
 # SECTION 1 — CONSTANTS AND TYPE REGISTRY
 # ─────────────────────────────────────────────────────────────
 
-AXON_VERSION = "1.0"
+AXON_VERSION = "1.1"
 
 BLOCK_TYPES = {
     "document",
@@ -1123,6 +1123,80 @@ def validate(doc: AxonDocument) -> ValidationResult:
                 f"(id={eq.attributes.get('id', 'unknown')})"
             )
 
+    # ─── AXON v1.1 — semantic-block validation ─────────────────
+    # Each new node type has soft requirements: missing attributes
+    # become warnings, never errors, so the document still validates
+    # while the author is alerted to fill in the metadata that makes
+    # the node useful for AI extraction.
+
+    for fnd in root.find("finding"):
+        fid = fnd.attributes.get("id", "unknown")
+        if not fnd.attributes.get("type"):
+            warnings.append(
+                f"@finding missing type= (id={fid}) — use 'primary' / 'secondary' / 'exploratory'"
+            )
+        if not fnd.attributes.get("significance"):
+            warnings.append(
+                f"@finding missing significance= (id={fid}) — typically a p-value"
+            )
+
+    for hyp in root.find("hypothesis"):
+        if not hyp.attributes.get("id"):
+            warnings.append(
+                "@hypothesis missing id= — required so @link nodes can reference it"
+            )
+        status = hyp.attributes.get("status", "proposed")
+        if status not in ("proposed", "supported", "rejected", "inconclusive"):
+            warnings.append(
+                f"@hypothesis status='{status}' is non-standard "
+                f"(use proposed / supported / rejected / inconclusive)"
+            )
+
+    for res in root.find("result"):
+        if not res.attributes.get("metric"):
+            warnings.append(
+                f"@result missing metric= (id={res.attributes.get('id', 'unknown')}) "
+                f"— required so AI extraction knows what is being measured"
+            )
+
+    for met in root.find("metric"):
+        if not met.attributes.get("name"):
+            warnings.append("@metric missing name= attribute")
+        if not met.attributes.get("value") and not met.text:
+            warnings.append(
+                f"@metric '{met.attributes.get('name', 'unknown')}' has no value="
+            )
+
+    for nar in root.find("narrative"):
+        if not nar.attributes.get("role"):
+            warnings.append(
+                "@narrative missing role= "
+                "(use motivation / mechanism_explanation / clinical_implication / limitation / future_work)"
+            )
+
+    for cr in root.find("code_ref"):
+        if not cr.attributes.get("repo"):
+            warnings.append(
+                "@code_ref missing repo= attribute (a public URL or owner/name)"
+            )
+
+    for lk in root.find("link"):
+        if not lk.attributes.get("from") or not lk.attributes.get("to"):
+            warnings.append("@link missing from= or to= attribute")
+        if not lk.attributes.get("type"):
+            warnings.append(
+                "@link missing type= "
+                "(use validated_by / derived_from / refutes / supports / contradicts / cites)"
+            )
+
+    for vw in root.find("view"):
+        vt = vw.attributes.get("type", "")
+        if vt not in ("linear", "graph", "summary", "outline", "data"):
+            warnings.append(
+                f"@view type='{vt}' is non-standard "
+                f"(use linear / graph / summary / outline / data)"
+            )
+
     # Duplicate IDs — only flag real, meaningful IDs.
     # A node without a declared id, or with an empty/placeholder id ("", "-", "—"),
     # is treated as having no id. This matches HTML semantics where an empty id
@@ -1321,6 +1395,55 @@ class HtmlRenderer:
             .axon-conflict{ border-left:3px solid #c89800; padding:0.4rem 0.9rem;
                              color:var(--ink-2); margin:0.6rem 0; }
 
+            /* ─── AXON v1.1 — semantic research blocks ─── */
+            /* All v1.1 blocks share the same visual idiom: a left-rule
+               accent in oxblood, a small mono badge identifying the role,
+               clean academic typography in the body. No boxes, no shadows. */
+
+            .finding, .hypothesis, .narrative, .result{
+              margin:1.4rem 0; padding:0.4rem 0 0.4rem 1.2rem;
+              border-left:3px solid var(--rule);
+            }
+            .finding--primary{ border-left-color:var(--accent); }
+            .finding__badge, .hypothesis__badge, .narrative__role, .result__metric{
+              display:block; font-family:var(--mono); font-size:0.72rem;
+              letter-spacing:0.08em; text-transform:uppercase;
+              color:var(--ink-3); margin:0 0 0.4rem;
+            }
+            .finding--primary .finding__badge{ color:var(--accent); }
+            .finding__body, .hypothesis__body{ color:var(--ink); }
+            .hypothesis--rejected .hypothesis__badge{ color:#a35; }
+            .hypothesis--supported .hypothesis__badge{ color:#2a6; }
+
+            .narrative__role{ display:inline-block; margin-right:0.6rem;
+                              padding:0.05em 0.4em; border:1px solid var(--rule); }
+            .narrative--motivation, .narrative--clinical_implication{ border-left-color:var(--accent); }
+
+            .result__values{ display:grid; grid-template-columns:auto 1fr;
+                             gap:0.2rem 1rem; margin:0.4rem 0;
+                             font-family:var(--mono); font-size:0.86rem;
+                             font-variant-numeric:tabular-nums; }
+            .result__values dt{ color:var(--ink-3); }
+            .result__values dd{ margin:0; color:var(--ink); }
+
+            .metric{ font-variant-numeric:tabular-nums; font-feature-settings:"tnum"; }
+            .metric__value{ font-weight:600; }
+            .metric__unit{ color:var(--ink-3); font-size:0.92em; }
+
+            .code-ref{ font-family:var(--mono); font-size:0.86rem;
+                       margin:0.6rem 0; padding:0.4rem 0.7rem;
+                       background:var(--rule-soft); }
+            .code-ref__label{ color:var(--ink-3); text-transform:uppercase;
+                              letter-spacing:0.08em; font-size:0.74rem; margin-right:0.4em; }
+            .code-ref a{ color:var(--accent); text-decoration:underline; }
+
+            .axon-link{ font-family:var(--mono); font-size:0.78rem;
+                        color:var(--ink-3); margin:0.4rem 0; }
+            .axon-link__rel{ font-style:italic; color:var(--accent); }
+
+            /* @view declarations are metadata, hidden in human render */
+            .axon-view{ display:none; }
+
             /* Inline links */
             a{ color:var(--ink); text-decoration-thickness:1px;
                 text-underline-offset:3px; text-decoration-color:var(--rule); }
@@ -1467,6 +1590,175 @@ class HtmlRenderer:
         if t == "conflict":
             inner = self._render_inline(node.text)
             return f'<div class="axon-conflict" role="alert">⚠ Unresolved conflict: {inner}</div>'
+
+        # ─── AXON v1.1 — semantic research-document node types ───
+        # See `AXON v1.1` section of the spec; each renders to a
+        # semantically-labelled HTML block so AI tools can extract
+        # structure without rendering, and humans see a clean visual.
+
+        if t == "finding":
+            kind = node.attributes.get("type", "")
+            sig = node.attributes.get("significance", "")
+            valid = node.attributes.get("validated", "")
+            badge_bits = [
+                b
+                for b in [kind, sig and f"p = {sig}", valid and f"validated · {valid}"]
+                if b
+            ]
+            badge = " · ".join(badge_bits)
+            inner = self._render_inline(node.text)
+            child_html = "\n".join(self._render_node(c) for c in node.children)
+            return (
+                f'<aside class="finding finding--{_he(kind) or "secondary"}" '
+                f'data-finding-type="{_he(kind)}" data-significance="{_he(sig)}" data-validated="{_he(valid)}">\n'
+                f'  <header class="finding__badge">Finding{" · " + _he(badge) if badge else ""}</header>\n'
+                f'  <div class="finding__body">{inner}{child_html}</div>\n'
+                f"</aside>"
+            )
+
+        if t == "hypothesis":
+            hid = node.attributes.get("id", "")
+            status = node.attributes.get("status", "proposed")
+            inner = self._render_inline(node.text)
+            child_html = "\n".join(self._render_node(c) for c in node.children)
+            return (
+                f'<aside class="hypothesis hypothesis--{_he(status)}" '
+                f'id="{_he(hid)}" data-hypothesis-id="{_he(hid)}" data-hypothesis-status="{_he(status)}">\n'
+                f'  <header class="hypothesis__badge">H{": " + _he(hid) if hid else ""} · {_he(status)}</header>\n'
+                f'  <div class="hypothesis__body">{inner}{child_html}</div>\n'
+                f"</aside>"
+            )
+
+        if t == "result":
+            metric = node.attributes.get("metric", "")
+            method = node.attributes.get("method", "")
+            # Every attribute except metric/method/id is treated as a numeric
+            # group/value the result encodes — render as a small definition list
+            # for humans, keep the data-* attrs for AI extraction.
+            data_attrs = " ".join(
+                f'data-{_he(k)}="{_he(v)}"'
+                for k, v in sorted(node.attributes.items())
+                if k not in ("metric", "method", "id")
+            )
+            id_attr = (
+                f' id="{_he(node.attributes.get("id", ""))}"'
+                if node.attributes.get("id")
+                else ""
+            )
+            rows = []
+            for k, v in sorted(node.attributes.items()):
+                if k in ("metric", "method", "id"):
+                    continue
+                rows.append(f'<dt>{_he(k)}</dt><dd data-type="numeric">{_he(v)}</dd>')
+            inner = self._render_inline(node.text)
+            child_html = "\n".join(self._render_node(c) for c in node.children)
+            return (
+                f'<section class="result"{id_attr} data-metric="{_he(metric)}" data-method="{_he(method)}" {data_attrs}>\n'
+                f'  <header class="result__metric">{_he(metric or "result")}'
+                f'{(" · " + _he(method)) if method else ""}</header>\n'
+                f'  <dl class="result__values">\n    '
+                + "\n    ".join(rows)
+                + "\n  </dl>\n"
+                f"  {inner}{child_html}\n"
+                f"</section>"
+            )
+
+        if t == "metric":
+            name = node.attributes.get("name", "")
+            value = node.attributes.get("value", node.text or "")
+            unit = node.attributes.get("unit", "")
+            group = node.attributes.get("group", "")
+            return (
+                f'<span class="metric" data-metric-name="{_he(name)}" '
+                f'data-metric-value="{_he(value)}" data-metric-unit="{_he(unit)}" '
+                f'data-metric-group="{_he(group)}">'
+                f'<span class="metric__value">{_he(value)}</span>'
+                f'<span class="metric__unit">{(" " + _he(unit)) if unit else ""}</span>'
+                f"</span>"
+            )
+
+        if t == "narrative":
+            role = node.attributes.get("role", "general")
+            inner = self._render_inline(node.text)
+            child_html = "\n".join(self._render_node(c) for c in node.children)
+            return (
+                f'<section class="narrative narrative--{_he(role)}" data-narrative-role="{_he(role)}">\n'
+                f'  <span class="narrative__role">{_he(role.replace("_", " "))}</span>\n'
+                f"  {inner}{child_html}\n"
+                f"</section>"
+            )
+
+        if t == "code_ref":
+            repo = node.attributes.get("repo", "")
+            script = node.attributes.get("script", "")
+            commit = node.attributes.get("commit", "")
+            repro = node.attributes.get("reproducible", "")
+            href_bits = []
+            if repo:
+                href_bits.append(repo)
+            if commit:
+                href_bits.append("commit/" + commit)
+            elif script:
+                href_bits.append("blob/main/" + script)
+            url = "/".join(b.rstrip("/") for b in href_bits) if href_bits else ""
+            url_attr = (
+                f'href="https://{_he(url)}"'
+                if url and not url.startswith(("http://", "https://"))
+                else f'href="{_he(url)}"'
+                if url
+                else ""
+            )
+            link_text = (
+                " / ".join(b for b in [repo, script, commit] if b) or "(unspecified)"
+            )
+            badge = (
+                " · reproducible"
+                if repro and repro.lower() not in ("false", "0", "no")
+                else ""
+            )
+            return (
+                f'<div class="code-ref" data-repo="{_he(repo)}" data-script="{_he(script)}" '
+                f'data-commit="{_he(commit)}" data-reproducible="{_he(repro)}">\n'
+                f'  <span class="code-ref__label">code</span> '
+                f'<a {url_attr} rel="noopener">{_he(link_text)}</a>{badge}\n'
+                f"</div>"
+            )
+
+        if t == "link":
+            src = node.attributes.get("from", "")
+            dst = node.attributes.get("to", "")
+            kind = node.attributes.get("type", "related")
+            label_map = {
+                "validated_by": "validated by",
+                "derived_from": "derived from",
+                "refutes": "refutes",
+                "supports": "supports",
+                "contradicts": "contradicts",
+                "implements": "implements",
+                "cites": "cites",
+                "related": "related to",
+            }
+            label = label_map.get(kind, kind.replace("_", " "))
+            return (
+                f'<div class="axon-link" '
+                f'data-link-from="{_he(src)}" data-link-to="{_he(dst)}" data-link-type="{_he(kind)}">\n'
+                f'  <a href="#{_he(src)}">{_he(src) or "?"}</a>'
+                f' <span class="axon-link__rel">{_he(label)}</span> '
+                f'<a href="#{_he(dst)}">{_he(dst) or "?"}</a>\n'
+                f"</div>"
+            )
+
+        if t == "view":
+            # @view declarations are document-level metadata (which views
+            # this document supports). Recorded as a hidden meta block —
+            # AI tools / future viewers read the data-view-type attribute.
+            view_type = node.attributes.get("type", "linear")
+            return (
+                f'<meta class="axon-view" '
+                f'data-view-type="{_he(view_type)}" '
+                f'aria-hidden="true">'
+            )
+
         if t in ("latex", "description", "notation_definitions", "caption"):
             return ""  # Rendered as part of parent
         if t == "data":

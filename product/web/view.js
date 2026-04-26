@@ -11,6 +11,9 @@
   const MAX_BYTES = 5 * 1024 * 1024;
 
   const $ = (id) => document.getElementById(id);
+  const track = (e, p) => {
+    try { if (typeof window.tdocTrack === "function") window.tdocTrack(e, p); } catch (e) { /* swallow */ }
+  };
   const dropCard = $("drop-card");
   const fileInput = $("file-input");
   const fileBtn = $("file-btn");
@@ -90,6 +93,10 @@
     busy = true;
     wrap.dataset.shown = "false";
     setStatus("rendering " + name + "…", "loading");
+    track("view_uploaded", {
+      ext: (name.match(/\.([a-z0-9]+)$/i) || ["", ""])[1].toLowerCase(),
+      size_kb: Math.round(blob.size / 1024),
+    });
 
     const fd = new FormData();
     fd.append("file", blob, name);
@@ -283,8 +290,8 @@
     setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
-  $("download-pdf-btn").addEventListener("click", downloadPdf);
-  $("print-btn").addEventListener("click", printDocument);
+  $("download-pdf-btn").addEventListener("click", () => { track("view_downloaded", { format: "pdf" }); downloadPdf(); });
+  $("print-btn").addEventListener("click", () => { track("view_printed"); printDocument(); });
   $("reload-btn").addEventListener("click", () => {
     if (lastData) render(lastData, lastSourceName);
   });
