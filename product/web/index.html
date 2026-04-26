@@ -13,7 +13,9 @@
 <meta name="theme-color" content="#fafaf7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#141310" media="(prefers-color-scheme: dark)">
 
-<script src="./theme.js"></script>
+<script src="./theme.js?v=2"></script>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="canonical" href="https://tdoc.xyz/">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1007,11 +1009,21 @@ button{ font: inherit; color: inherit; background: none; border: 0; padding: 0; 
   <div class="rates__header" data-reveal>
     <h2><em>Rates.</em></h2>
     <div></div>
-    <p class="note">Monthly · USD · cancel any time</p>
+    <p class="note">Public beta &middot; every tier free</p>
   </div>
 
+  <p class="rates__footnote" data-reveal style="margin: 0 0 2rem; max-width: 38rem;">
+    <em>tdoc is in public beta.</em> Every tier below is free during this
+    period &mdash; we are looking for honest feedback, not paying customers
+    yet. To request an API key (or a higher quota than the demo allows),
+    write to <a href="mailto:hello@tdoc.xyz">hello@tdoc.xyz</a>. The
+    self-hosted Apache-2.0 reference at <a href="https://github.com/LuciferMors/tdoc" rel="noopener">github.com/LuciferMors/tdoc</a>
+    is fully free and always will be. Pricing below is the structure paid
+    plans will eventually take &mdash; nothing is billing today.
+  </p>
+
   <table class="rates__table">
-    <caption>tdoc subscription rates</caption>
+    <caption>tdoc tiers (free during beta)</caption>
     <tbody>
 
       <tr data-reveal>
@@ -1029,7 +1041,7 @@ button{ font: inherit; color: inherit; background: none; border: 0; padding: 0; 
           <b>2,000 documents a month.</b> Email support; soft upgrade path &mdash;
           no hard overage block, you simply get a note when you cross.
         </td>
-        <td class="rates__price">$29<small>/mo</small></td>
+        <td class="rates__price"><span style="text-decoration: line-through; color: var(--ink-4);">$29</span> <em>free</em><small>/beta</small></td>
       </tr>
 
       <tr data-reveal>
@@ -1039,7 +1051,7 @@ button{ font: inherit; color: inherit; background: none; border: 0; padding: 0; 
           Twenty-four hour email response. Overage billed at <b>$0.02</b> per
           document, with a monthly ceiling.
         </td>
-        <td class="rates__price">$99<small>/mo</small></td>
+        <td class="rates__price"><span style="text-decoration: line-through; color: var(--ink-4);">$99</span> <em>free</em><small>/beta</small></td>
       </tr>
 
       <tr data-reveal>
@@ -1049,17 +1061,16 @@ button{ font: inherit; color: inherit; background: none; border: 0; padding: 0; 
           with the author. Overage at <b>$0.01</b> per document. Annual contracts
           available.
         </td>
-        <td class="rates__price">$499<small>/mo</small></td>
+        <td class="rates__price"><span style="text-decoration: line-through; color: var(--ink-4);">$499</span> <em>free</em><small>/beta</small></td>
       </tr>
 
     </tbody>
   </table>
 
   <p class="rates__footnote" data-reveal>
-    Enterprise &amp; invoice billing by arrangement &mdash; write to
-    <a href="mailto:hello@tdoc.xyz">hello@tdoc.xyz</a>. We reserve the right
-    to decline customers whose intended use would embarrass us. Self-hosting
-    is always free and always will be: tdoc is Apache 2.0.
+    Self-hosting is always free and always will be: the reference
+    implementation is Apache 2.0. The format is open. The tdoc service
+    here is the hosted convenience &mdash; not the only way to get value.
   </p>
 </section>
 
@@ -1098,9 +1109,16 @@ button{ font: inherit; color: inherit; background: none; border: 0; padding: 0; 
       <p><a href="mailto:hello@tdoc.xyz">hello@tdoc.xyz</a></p>
     </div>
 
+    <div>
+      <h4>Legal</h4>
+      <p><a href="/terms">Terms</a></p>
+      <p><a href="/privacy">Privacy</a></p>
+      <p><a href="/security">Security</a></p>
+    </div>
+
   </div>
 </footer>
 
-<script src="./app.js"></script>
+<script src="./app.js?v=2"></script>
 </body>
 </html>

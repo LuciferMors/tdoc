@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tdoc · privacy</title>
+<meta name="description" content="Privacy policy for tdoc.xyz — what we collect, what we don't, and how to delete data.">
+<link rel="canonical" href="https://tdoc.xyz/privacy">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="theme-color" content="#fafaf7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141310" media="(prefers-color-scheme: dark)">
+<script src="./theme.js?v=2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=JetBrains+Mono:ital,wght@0,400..600;1,400..600&display=swap">
+<style>
+:root{--serif:"Newsreader","Iowan Old Style",Baskerville,Georgia,serif;--mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;--col-max:1180px;--gutter:clamp(1.5rem,4vw,4rem)}
+:root,[data-theme="light"]{--paper:#fafaf7;--ink:#0c0c0c;--ink-2:#2b2a27;--ink-3:#55524d;--rule:#c8c3b7;--oxblood:#7a0c1a}
+[data-theme="dark"]{--paper:#141310;--ink:#efe9d9;--ink-2:#c6c0b1;--ink-3:#8a8577;--rule:#2c2a24;--oxblood:#d85565}
+*,*::before,*::after{box-sizing:border-box;min-width:0}
+html{-webkit-text-size-adjust:100%;overflow-x:hidden}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:clamp(1rem,.9rem + .45vw,1.15rem);line-height:1.6;font-variation-settings:"opsz" 17;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow-wrap:break-word}
+a{color:var(--ink);text-decoration-thickness:1px;text-underline-offset:3px;text-decoration-color:var(--rule)}
+a:hover{color:var(--oxblood);text-decoration-color:var(--oxblood)}
+::selection{background:var(--oxblood);color:var(--paper)}
+.column{max-width:var(--col-max);margin:0 auto;padding:0 var(--gutter)}
+.legal{max-width:36rem;margin:0 auto;padding:0 var(--gutter)}
+.masthead{border-bottom:1px solid var(--rule);padding:1.4rem 0}
+.masthead__grid{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;flex-wrap:wrap}
+.masthead__title{font-family:var(--serif);font-style:italic;font-weight:500;font-size:1.4rem;margin:0}
+.masthead__title a{text-decoration:none}
+.masthead__title em{color:var(--oxblood)}
+.masthead__meta{font-family:var(--mono);font-size:.78rem;color:var(--ink-3);letter-spacing:.04em;text-transform:uppercase}
+.masthead__meta a{color:var(--ink-3);text-decoration:none}
+.masthead__meta a:hover{color:var(--oxblood);text-decoration:underline}
+.theme-toggle button{background:none;border:0;font:inherit;color:inherit;cursor:pointer;padding:0;letter-spacing:inherit;text-transform:inherit}
+.theme-toggle button[aria-pressed="true"]{color:var(--oxblood)}
+.theme-toggle .sep{margin:0 .4em;color:var(--ink-3)}
+.eyebrow{font-family:var(--mono);font-size:.75rem;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3);margin:0 0 .8rem}
+h1{font-family:var(--serif);font-weight:400;font-size:clamp(2rem,1.6rem + 2vw,3rem);line-height:1.1;letter-spacing:-.02em;margin:clamp(2.5rem,6vw,4rem) 0 1.4rem;font-variation-settings:"opsz" 60}
+h1 em{color:var(--oxblood)}
+h2{font-family:var(--serif);font-weight:500;font-size:1.3rem;margin:2.2rem 0 .6rem}
+p,ul,ol{margin:0 0 1rem;color:var(--ink-2)}
+ul,ol{padding-left:1.2rem}
+.note{font-family:var(--mono);font-size:.78rem;color:var(--ink-3);letter-spacing:.04em;background:var(--paper);border:1px dashed var(--rule);padding:.9rem 1.1rem;margin:1.4rem 0 2rem}
+small{display:block;color:var(--ink-3);font-size:.85rem;margin-top:.4rem}
+.colophon{margin-top:clamp(3rem,8vw,6rem);padding:2rem 0;border-top:1px solid var(--rule);font-family:var(--mono);font-size:.78rem;color:var(--ink-3);text-align:center}
+.colophon a{color:var(--ink-3)}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="column masthead__grid">
+    <h1 class="masthead__title" style="margin:0"><a href="/">tdoc<em>.</em></a></h1>
+    <div class="masthead__meta">
+      <a href="/">Home</a> · <a href="/try">Try</a> · <a href="/terms">Terms</a> · <a href="/security">Security</a>
+      &nbsp;&nbsp;
+      <span class="theme-toggle" role="group" aria-label="Theme">
+        <button type="button" data-theme-set="light" aria-pressed="true">Day</button><span class="sep" aria-hidden="true">·</span><button type="button" data-theme-set="dark" aria-pressed="false">Night</button>
+      </span>
+    </div>
+  </div>
+</header>
+
+<main class="legal">
+
+<p class="eyebrow">Effective 26 April 2026 · public beta</p>
+<h1>Privacy <em>policy.</em></h1>
+
+<p class="note">Short version: we collect as little as possible, we do not sell anything, your documents are not stored on the public demo, and you can email <a href="mailto:hello@tdoc.xyz">hello@tdoc.xyz</a> to delete anything we do hold.</p>
+
+<h2>1. What we collect</h2>
+<ul>
+  <li><strong>IP addresses</strong>, briefly, for rate limiting and abuse prevention. Logged with a per-request ID, not joined to any account.</li>
+  <li><strong>The first 8 characters of an API key</strong> in audit logs, so we can correlate requests on a support ticket without ever logging the full key.</li>
+  <li><strong>Email addresses you send us</strong> at <a href="mailto:hello@tdoc.xyz">hello@tdoc.xyz</a>. Stored in the inbox; used to reply.</li>
+  <li><strong>Plan metadata</strong> when paid tiers go live: tier name, subscription id, units used, customer id assigned by the payment processor.</li>
+  <li><strong>Anonymous usage analytics</strong> if we add them. No PII, no document content, no API key — counts of pageviews and conversion events only. We will update this page when analytics activate and offer a respect for the <code>Do Not Track</code> header.</li>
+</ul>
+
+<h2>2. What we do not collect</h2>
+<ul>
+  <li>Your document content. The public demo at <code>/v1/try-public</code> reads, processes, and discards your file in the same request — nothing is written to disk for storage. (Brief temp files for PDF parsing are deleted within milliseconds.)</li>
+  <li>Browser cookies for tracking. The site uses <code>localStorage</code> only to remember your day/night theme preference.</li>
+  <li>Browser fingerprints, ad identifiers, social-graph data.</li>
+</ul>
+
+<h2>3. Where the data lives</h2>
+<p>The site is served by <strong>Cloudflare Pages</strong> (Cloudflare's privacy policy applies). The API runs on a <strong>Hugging Face Space</strong> (their privacy policy applies). When persistence is enabled, plan metadata is stored on a managed Postgres database (Supabase or equivalent — their privacy policy applies). Document content is never persisted by us.</p>
+
+<h2>4. International transfers</h2>
+<p>You may use the service from any country; processing happens at our providers' chosen regions, currently primarily India and Singapore. Cloudflare's edge serves cached responses from a region close to you.</p>
+
+<h2>5. Children</h2>
+<p>The service is not directed at children under 13. Do not use it if you are under 13.</p>
+
+<h2>6. Your rights</h2>
+<ul>
+  <li>You can ask us what data we hold about you. Email <a href="mailto:hello@tdoc.xyz">hello@tdoc.xyz</a>.</li>
+  <li>You can ask us to delete it. We will, within 30 days, unless we need to retain something to defend against fraud or comply with law.</li>
+  <li>You can ask us to correct it.</li>
+  <li>EU/UK residents have the additional rights afforded by GDPR / UK GDPR — same email.</li>
+  <li>California residents have the additional rights afforded by CCPA — same email.</li>
+</ul>
+
+<h2>7. Security</h2>
+<p>See the <a href="/security">security page</a> for headers, threat model, and how to report a vulnerability.</p>
+
+<h2>8. Changes</h2>
+<p>We may update this policy; we will post the new version with a new effective date and announce material changes in the GitHub repository.</p>
+
+<p><small>Last updated: 26 April 2026. If something here is unclear, write to <a href="mailto:hello@tdoc.xyz">hello@tdoc.xyz</a> and we will fix the wording.</small></p>
+
+</main>
+
+<footer class="colophon">
+  <div class="column">
+    <p>tdoc · <a href="/">home</a> · <a href="/try">try</a> · <a href="/terms">terms</a> · <a href="/security">security</a> · <a href="https://github.com/LuciferMors/tdoc" rel="noopener">github</a> · <a href="mailto:hello@tdoc.xyz">hello@tdoc.xyz</a></p>
+  </div>
+</footer>
+
+</body>
+</html>

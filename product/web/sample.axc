@@ -1,0 +1,32 @@
+@section [id="abstract"]:
+  @heading [level=1]:
+    Effect of Caloric Restriction on Lifespan in C57BL/6 Mice
+  @paragraph:
+    Across [data-type="numeric"]n=240[/data-type] male C57BL/6 mice, a
+    [data-type="percent"]30%[/data-type] reduction in caloric intake from
+    [data-type="duration"]8 weeks[/data-type] of age extended median lifespan
+    by [data-type="percent"]17.4%[/data-type] versus ad libitum controls
+    (p [data-type="pvalue"]= 0.003[/data-type], log-rank test).
+
+@section [id="results"]:
+  @heading [level=2]:
+    Results
+  @paragraph:
+    Treated cohort median lifespan: [data-type="duration"]987 days[/data-type]
+    (95% CI [data-type="duration"]961 to 1014 days[/data-type]). Control
+    median: [data-type="duration"]841 days[/data-type] (95% CI
+    [data-type="duration"]820 to 862 days[/data-type]). Hazard ratio
+    [data-type="numeric"]0.61[/data-type] (95% CI
+    [data-type="numeric"]0.46 to 0.81[/data-type]).
+  @paragraph:
+    Body weight at [data-type="duration"]52 weeks[/data-type]:
+    [data-type="mass"]28.4 g[/data-type] (treated) vs.
+    [data-type="mass"]34.1 g[/data-type] (control), p
+    [data-type="pvalue"]< 0.001[/data-type].
+
+@section [id="conclusion"]:
+  @heading [level=2]:
+    Conclusion
+  @paragraph:
+    A 30% caloric restriction extended both median and maximum lifespan
+    in this cohort. Replication in independent strains is warranted.

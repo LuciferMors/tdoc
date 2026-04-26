@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tdoc · security</title>
+<meta name="description" content="Security posture for tdoc.xyz — headers, threat model, vulnerability disclosure.">
+<link rel="canonical" href="https://tdoc.xyz/security">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="theme-color" content="#fafaf7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141310" media="(prefers-color-scheme: dark)">
+<script src="./theme.js?v=2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=JetBrains+Mono:ital,wght@0,400..600;1,400..600&display=swap">
+<style>
+:root{--serif:"Newsreader","Iowan Old Style",Baskerville,Georgia,serif;--mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;--col-max:1180px;--gutter:clamp(1.5rem,4vw,4rem)}
+:root,[data-theme="light"]{--paper:#fafaf7;--ink:#0c0c0c;--ink-2:#2b2a27;--ink-3:#55524d;--rule:#c8c3b7;--oxblood:#7a0c1a;--paper-2:#f2eee4}
+[data-theme="dark"]{--paper:#141310;--ink:#efe9d9;--ink-2:#c6c0b1;--ink-3:#8a8577;--rule:#2c2a24;--oxblood:#d85565;--paper-2:#1c1a15}
+*,*::before,*::after{box-sizing:border-box;min-width:0}
+html{-webkit-text-size-adjust:100%;overflow-x:hidden}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:clamp(1rem,.9rem + .45vw,1.15rem);line-height:1.6;font-variation-settings:"opsz" 17;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow-wrap:break-word}
+a{color:var(--ink);text-decoration-thickness:1px;text-underline-offset:3px;text-decoration-color:var(--rule)}
+a:hover{color:var(--oxblood);text-decoration-color:var(--oxblood)}
+::selection{background:var(--oxblood);color:var(--paper)}
+.column{max-width:var(--col-max);margin:0 auto;padding:0 var(--gutter)}
+.legal{max-width:36rem;margin:0 auto;padding:0 var(--gutter)}
+.masthead{border-bottom:1px solid var(--rule);padding:1.4rem 0}
+.masthead__grid{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;flex-wrap:wrap}
+.masthead__title{font-family:var(--serif);font-style:italic;font-weight:500;font-size:1.4rem;margin:0}
+.masthead__title a{text-decoration:none}
+.masthead__title em{color:var(--oxblood)}
+.masthead__meta{font-family:var(--mono);font-size:.78rem;color:var(--ink-3);letter-spacing:.04em;text-transform:uppercase}
+.masthead__meta a{color:var(--ink-3);text-decoration:none}
+.masthead__meta a:hover{color:var(--oxblood);text-decoration:underline}
+.theme-toggle button{background:none;border:0;font:inherit;color:inherit;cursor:pointer;padding:0;letter-spacing:inherit;text-transform:inherit}
+.theme-toggle button[aria-pressed="true"]{color:var(--oxblood)}
+.theme-toggle .sep{margin:0 .4em;color:var(--ink-3)}
+.eyebrow{font-family:var(--mono);font-size:.75rem;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3);margin:0 0 .8rem}
+h1{font-family:var(--serif);font-weight:400;font-size:clamp(2rem,1.6rem + 2vw,3rem);line-height:1.1;letter-spacing:-.02em;margin:clamp(2.5rem,6vw,4rem) 0 1.4rem;font-variation-settings:"opsz" 60}
+h1 em{color:var(--oxblood)}
+h2{font-family:var(--serif);font-weight:500;font-size:1.3rem;margin:2.2rem 0 .6rem}
+p,ul{margin:0 0 1rem;color:var(--ink-2)}
+ul{padding-left:1.2rem}
+.note{font-family:var(--mono);font-size:.78rem;color:var(--ink-3);letter-spacing:.04em;background:var(--paper-2);border:1px dashed var(--rule);padding:.9rem 1.1rem;margin:1.4rem 0 2rem}
+.badge-row{display:flex;flex-wrap:wrap;gap:.6rem;margin:1.4rem 0 2rem}
+.badge{font-family:var(--mono);font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--oxblood);border:1px solid var(--oxblood);padding:.3rem .6rem}
+code{font-family:var(--mono);font-size:.86em;background:var(--paper-2);padding:.05em .35em;border:1px solid var(--rule)}
+small{display:block;color:var(--ink-3);font-size:.85rem;margin-top:.4rem}
+.colophon{margin-top:clamp(3rem,8vw,6rem);padding:2rem 0;border-top:1px solid var(--rule);font-family:var(--mono);font-size:.78rem;color:var(--ink-3);text-align:center}
+.colophon a{color:var(--ink-3)}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="column masthead__grid">
+    <h1 class="masthead__title" style="margin:0"><a href="/">tdoc<em>.</em></a></h1>
+    <div class="masthead__meta">
+      <a href="/">Home</a> · <a href="/try">Try</a> · <a href="/terms">Terms</a> · <a href="/privacy">Privacy</a>
+      &nbsp;&nbsp;
+      <span class="theme-toggle" role="group" aria-label="Theme">
+        <button type="button" data-theme-set="light" aria-pressed="true">Day</button><span class="sep" aria-hidden="true">·</span><button type="button" data-theme-set="dark" aria-pressed="false">Night</button>
+      </span>
+    </div>
+  </div>
+</header>
+
+<main class="legal">
+
+<p class="eyebrow">Live · externally verified</p>
+<h1>Security <em>posture.</em></h1>
+
+<div class="badge-row">
+  <a class="badge" href="https://developer.mozilla.org/en-US/observatory/analyze?host=tdoc.xyz" rel="noopener">Mozilla Observatory · A+ · 125</a>
+  <a class="badge" href="https://developer.mozilla.org/en-US/observatory/analyze?host=api.tdoc.xyz" rel="noopener">API · A+ · 130</a>
+</div>
+
+<h2>Transport</h2>
+<ul>
+  <li>HTTPS only. <code>Strict-Transport-Security</code> with <code>max-age=31536000; includeSubDomains; preload</code>.</li>
+  <li>HTTP requests are 301-redirected to HTTPS at the Cloudflare edge.</li>
+  <li>HSTS preload submission has been made; once accepted, browsers will refuse cleartext HTTP for tdoc.xyz before any DNS lookup happens.</li>
+</ul>
+
+<h2>Headers</h2>
+<ul>
+  <li><code>Content-Security-Policy</code> with no <code>unsafe-eval</code>, no inline scripts, allowlisted <code>connect-src</code> and <code>font-src</code>.</li>
+  <li><code>X-Frame-Options: DENY</code> + CSP <code>frame-ancestors 'none'</code> — clickjacking defence.</li>
+  <li><code>X-Content-Type-Options: nosniff</code>, <code>Referrer-Policy: strict-origin-when-cross-origin</code>.</li>
+  <li><code>Permissions-Policy</code> revokes camera, geolocation, payment, microphone, USB, and other powerful APIs by default.</li>
+  <li><code>Cross-Origin-Opener-Policy: same-origin</code>, <code>Cross-Origin-Resource-Policy: same-origin</code>.</li>
+</ul>
+
+<h2>API surface</h2>
+<ul>
+  <li>Per-IP and per-key token-bucket rate limiting (<code>RateLimitMiddleware</code>).</li>
+  <li>32 MiB body cap globally; 5 MiB cap on the unauthenticated demo endpoint.</li>
+  <li>Bearer-token API keys; constant-time comparison via <code>hmac.compare_digest</code>.</li>
+  <li>Signed Lemon Squeezy webhook with HMAC-SHA256 verification (constant-time).</li>
+  <li>Audit logs include only the first 8 characters of any API key, never the full value.</li>
+  <li>Errors are normalised to a stable <code>{"error","request_id"}</code> shape — no stack traces, no internal paths.</li>
+</ul>
+
+<h2>The <code>/try</code> demo</h2>
+<ul>
+  <li>The HTML preview from a user-uploaded document is rendered inside an <code>&lt;iframe sandbox=""&gt;</code> with no permissions — no scripts, no same-origin, no network. Any future renderer bug cannot become an XSS vector on tdoc.xyz.</li>
+  <li>Document content is processed in the same request and discarded. No storage.</li>
+</ul>
+
+<h2>Threat model</h2>
+<p>The full threat model and its mitigations are tracked in the public repository at <a href="https://github.com/LuciferMors/tdoc/blob/main/THREAT_MODEL.md" rel="noopener">THREAT_MODEL.md</a>. The incident response runbook is at <a href="https://github.com/LuciferMors/tdoc/blob/main/INCIDENT_RESPONSE.md" rel="noopener">INCIDENT_RESPONSE.md</a>.</p>
+
+<h2>Reporting a vulnerability</h2>
+<p>Email <a href="mailto:hello@tdoc.xyz">hello@tdoc.xyz</a> with a subject line beginning <code>SECURITY:</code>. We respond within 72 hours during the beta. Please give us at least 30 days to fix before public disclosure. We do not yet run a formal bounty program; we acknowledge contributors in the changelog and on this page once the first valid report lands.</p>
+
+<p><small>Last reviewed: 26 April 2026.</small></p>
+
+</main>
+
+<footer class="colophon">
+  <div class="column">
+    <p>tdoc · <a href="/">home</a> · <a href="/try">try</a> · <a href="/terms">terms</a> · <a href="/privacy">privacy</a> · <a href="https://github.com/LuciferMors/tdoc" rel="noopener">github</a> · <a href="mailto:hello@tdoc.xyz">hello@tdoc.xyz</a></p>
+  </div>
+</footer>
+
+</body>
+</html>

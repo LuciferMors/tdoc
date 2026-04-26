@@ -45,6 +45,8 @@
 # Per-path overrides — short cache on JS so deploys propagate in minutes,
 # not the 4-hour CF Pages default. HTML is already always-revalidate.
 # When we move to content-hash filenames we can flip these back to long-lived.
+# (HTML files served by CF Pages get `cache-control: public, max-age=0,
+#  must-revalidate` automatically — no per-path block needed for those.)
 /try.js
   Cache-Control: public, max-age=300, must-revalidate
 
@@ -53,3 +55,22 @@
 
 /theme.js
   Cache-Control: public, max-age=300, must-revalidate
+
+# robots.txt + sitemap.xml deserve their proper MIME types and a daily cache.
+/robots.txt
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=86400
+
+/sitemap.xml
+  Content-Type: application/xml; charset=utf-8
+  Cache-Control: public, max-age=86400
+
+# SVG favicon — long cache, immutable, since the URL itself is stable.
+/favicon.svg
+  Content-Type: image/svg+xml
+  Cache-Control: public, max-age=604800
+
+# Demo sample — fetched by /try when user clicks "Try with sample".
+/sample.axc
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=86400

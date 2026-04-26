@@ -273,6 +273,31 @@
     setTimeout(() => URL.revokeObjectURL(url), 0);
   });
 
+  // ─── "Try with sample" — fetches /sample.axc and uploads it ─
+  // Lets a visitor without a PDF in hand still see the demo work.
+  on("sample-btn", async () => {
+    if (busy) return;
+    setStatus("loading sample…", "loading");
+    try {
+      const r = await fetch("/sample.axc", { cache: "force-cache" });
+      if (!r.ok) {
+        setStatus("could not load sample (HTTP " + r.status + ")", "error");
+        return;
+      }
+      const text = await r.text();
+      // Wrap as a File so upload() takes the same code path as a real upload.
+      const blob = new Blob([text], { type: "text/plain" });
+      const f = new File([blob], "sample.axc", { type: "text/plain" });
+      upload(f);
+    } catch (err) {
+      setStatus(
+        "could not load sample — " +
+          (err && err.message ? err.message : String(err)),
+        "error"
+      );
+    }
+  });
+
   // ─── Drag-and-drop wiring ────────────────────────────────────
   drop.addEventListener("click", (e) => {
     if (e.target.tagName !== "INPUT") file.click();

@@ -17,6 +17,8 @@
      so users on a stale Cloudflare-cached copy fetch the new version
      instead of crashing on a renamed DOM id. -->
 <script src="./theme.js?v=2"></script>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="canonical" href="https://tdoc.xyz/try">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -93,6 +95,15 @@ a:hover{ color: var(--oxblood); text-decoration-color: var(--oxblood); }
 .drop__title{ font-family: var(--serif); font-style: italic; font-size: 1.4rem; margin: 0 0 0.4rem; }
 .drop__hint{ font-family: var(--mono); font-size: 0.78rem; color: var(--ink-3); letter-spacing: 0.04em; margin: 0; }
 .drop input[type=file]{ position: absolute; left: -9999px; }
+
+.sample-line{ margin: 0 0 1.6rem; text-align: center; }
+.sample-link{
+  background: none; border: 0; padding: 0; font-family: var(--mono);
+  font-size: 0.78rem; letter-spacing: 0.04em; color: var(--ink-3);
+  cursor: pointer; text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px;
+}
+.sample-link:hover{ color: var(--oxblood); text-decoration-color: var(--oxblood); }
+.sample-link:focus-visible{ outline: 2px solid var(--oxblood); outline-offset: 2px; }
 
 /* Status line */
 .status{
@@ -211,6 +222,8 @@ pre.json .num, pre.json .bool, pre.json .null{ color: var(--ink-3); }
     <input type="file" id="file" accept=".pdf,.axc,.txt,.md,application/pdf,text/plain,text/markdown">
   </div>
 
+  <p class="sample-line"><button type="button" class="sample-link" id="sample-btn">No file handy? Try with a sample paper.</button></p>
+
   <p class="status" id="status" data-state="idle"></p>
 
   <div class="results" id="results" data-shown="false">
@@ -261,7 +274,7 @@ pre.json .num, pre.json .bool, pre.json .null{ color: var(--ink-3); }
 
 <footer class="colophon">
   <div class="column">
-    <p>tdoc · <a href="/">home</a> · <a href="https://github.com/LuciferMors/tdoc" rel="noopener">github</a> · <a href="mailto:hello@tdoc.xyz">hello@tdoc.xyz</a></p>
+    <p>tdoc · <a href="/">home</a> · <a href="/terms">terms</a> · <a href="/privacy">privacy</a> · <a href="/security">security</a> · <a href="https://github.com/LuciferMors/tdoc" rel="noopener">github</a> · <a href="mailto:hello@tdoc.xyz">hello@tdoc.xyz</a></p>
   </div>
 </footer>
 

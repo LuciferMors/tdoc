@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tdoc · terms</title>
+<meta name="description" content="Terms of service for tdoc.xyz — public beta. Plain language. No surprises.">
+<link rel="canonical" href="https://tdoc.xyz/terms">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="theme-color" content="#fafaf7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141310" media="(prefers-color-scheme: dark)">
+<script src="./theme.js?v=2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=JetBrains+Mono:ital,wght@0,400..600;1,400..600&display=swap">
+<style>
+:root{
+  --serif: "Newsreader", "Iowan Old Style", Baskerville, Georgia, serif;
+  --mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --col-max: 1180px; --gutter: clamp(1.5rem, 4vw, 4rem);
+}
+:root, [data-theme="light"]{
+  --paper:#fafaf7;--ink:#0c0c0c;--ink-2:#2b2a27;--ink-3:#55524d;
+  --rule:#c8c3b7;--oxblood:#7a0c1a;
+}
+[data-theme="dark"]{
+  --paper:#141310;--ink:#efe9d9;--ink-2:#c6c0b1;--ink-3:#8a8577;
+  --rule:#2c2a24;--oxblood:#d85565;
+}
+*,*::before,*::after{box-sizing:border-box;min-width:0}
+html{-webkit-text-size-adjust:100%;overflow-x:hidden}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);
+  font-size:clamp(1rem, 0.9rem + 0.45vw, 1.15rem);line-height:1.6;
+  font-variation-settings:"opsz" 17;-webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;overflow-wrap:break-word}
+a{color:var(--ink);text-decoration-thickness:1px;text-underline-offset:3px;text-decoration-color:var(--rule)}
+a:hover{color:var(--oxblood);text-decoration-color:var(--oxblood)}
+::selection{background:var(--oxblood);color:var(--paper)}
+.column{max-width:var(--col-max);margin:0 auto;padding:0 var(--gutter)}
+.legal{max-width:36rem;margin:0 auto;padding:0 var(--gutter)}
+
+.masthead{border-bottom:1px solid var(--rule);padding:1.4rem 0}
+.masthead__grid{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;flex-wrap:wrap}
+.masthead__title{font-family:var(--serif);font-style:italic;font-weight:500;font-size:1.4rem;margin:0}
+.masthead__title a{text-decoration:none}
+.masthead__title em{color:var(--oxblood)}
+.masthead__meta{font-family:var(--mono);font-size:.78rem;color:var(--ink-3);letter-spacing:.04em;text-transform:uppercase}
+.masthead__meta a{color:var(--ink-3);text-decoration:none}
+.masthead__meta a:hover{color:var(--oxblood);text-decoration:underline}
+.theme-toggle button{background:none;border:0;font:inherit;color:inherit;cursor:pointer;padding:0;letter-spacing:inherit;text-transform:inherit}
+.theme-toggle button[aria-pressed="true"]{color:var(--oxblood)}
+.theme-toggle .sep{margin:0 .4em;color:var(--ink-3)}
+
+.eyebrow{font-family:var(--mono);font-size:.75rem;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3);margin:0 0 .8rem}
+h1{font-family:var(--serif);font-weight:400;font-size:clamp(2rem, 1.6rem + 2vw, 3rem);line-height:1.1;letter-spacing:-.02em;margin:clamp(2.5rem, 6vw, 4rem) 0 1.4rem;font-variation-settings:"opsz" 60}
+h1 em{color:var(--oxblood)}
+h2{font-family:var(--serif);font-weight:500;font-size:1.3rem;margin:2.2rem 0 .6rem}
+p,ul{margin:0 0 1rem;color:var(--ink-2)}
+ul{padding-left:1.2rem}
+.legal small{display:block;color:var(--ink-3);font-size:.85rem;margin-top:.4rem}
+.note{font-family:var(--mono);font-size:.78rem;color:var(--ink-3);letter-spacing:.04em;background:var(--paper);border:1px dashed var(--rule);padding:.9rem 1.1rem;margin:1.4rem 0 2rem}
+
+.colophon{margin-top:clamp(3rem, 8vw, 6rem);padding:2rem 0;border-top:1px solid var(--rule);font-family:var(--mono);font-size:.78rem;color:var(--ink-3);text-align:center}
+.colophon a{color:var(--ink-3)}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="column masthead__grid">
+    <h1 class="masthead__title" style="margin:0"><a href="/">tdoc<em>.</em></a></h1>
+    <div class="masthead__meta">
+      <a href="/">Home</a> · <a href="/try">Try</a> · <a href="/privacy">Privacy</a> · <a href="/security">Security</a>
+      &nbsp;&nbsp;
+      <span class="theme-toggle" role="group" aria-label="Theme">
+        <button type="button" data-theme-set="light" aria-pressed="true">Day</button><span class="sep" aria-hidden="true">·</span><button type="button" data-theme-set="dark" aria-pressed="false">Night</button>
+      </span>
+    </div>
+  </div>
+</header>
+
+<main class="legal">
+
+<p class="eyebrow">Effective 26 April 2026 · public beta</p>
+<h1>Terms of <em>service.</em></h1>
+
+<p class="note">tdoc is in <strong>public beta</strong>. Free during this period. No paid plans are billing yet. These terms cover the free service; paid terms will replace them when subscriptions activate, with notice and an opt-out window.</p>
+
+<h2>1. Who we are</h2>
+<p>tdoc.xyz is operated as a sole proprietorship by Rishi Arun Shivhare in India. Contact: <a href="mailto:hello@tdoc.xyz">hello@tdoc.xyz</a>.</p>
+
+<h2>2. What you get</h2>
+<p>The right to use the hosted API at <code>api.tdoc.xyz</code>, the demo at <code>tdoc.xyz/try</code>, the open-source <code>axon-document</code> Python package on PyPI, and the AXON format specification. The reference implementation is Apache-2.0 licensed; you can self-host it without our involvement.</p>
+
+<h2>3. Beta status — what we don't promise</h2>
+<ul>
+  <li>No SLA. The service may be slow, paused, or offline at any time.</li>
+  <li>No warranty. The service is provided as-is. Output may be wrong.</li>
+  <li>No data persistence guarantee. The free demo endpoint stores nothing; the authenticated API stores plan metadata best-effort.</li>
+  <li>Backwards-incompatible changes may happen until v1.0. We will document them.</li>
+</ul>
+
+<h2>4. What you must not do</h2>
+<ul>
+  <li>Upload content you don't have the right to process — copyrighted material without licence, classified information, third-party documents you've been told to keep confidential.</li>
+  <li>Upload content depicting child sexual abuse, real-world violence as instruction, or material that violates Indian or recipient-jurisdiction law.</li>
+  <li>Use the service to harass, dox, or impersonate.</li>
+  <li>Attempt to break, scrape past rate limits, or reverse-engineer the hosted infrastructure.</li>
+  <li>Resell access without permission. Self-hosting your own copy under Apache-2.0 is fine and encouraged.</li>
+</ul>
+
+<h2>5. Intellectual property</h2>
+<p>You keep ownership of your inputs. We claim no rights to your documents. The AXON format specification, the reference implementation, and the tdoc trademark are ours; the format and reference are licensed Apache-2.0 — see the LICENSE file in the repository.</p>
+
+<h2>6. Termination</h2>
+<p>We may suspend or terminate access for any account that violates these terms, that creates excessive load, or whose intended use would embarrass us. We will give notice and a chance to export data unless the violation is severe enough to require immediate action.</p>
+
+<h2>7. Liability</h2>
+<p>To the maximum extent permitted by applicable law, our total liability for any claim relating to the service is limited to the amount you paid us in the 12 months before the claim arose — which during beta is zero. We are not liable for indirect, incidental, or consequential damages.</p>
+
+<h2>8. Governing law</h2>
+<p>These terms are governed by the laws of India, with exclusive jurisdiction in the courts of Maharashtra. If you are an EU consumer, mandatory consumer-protection rights of your country still apply.</p>
+
+<h2>9. Changes</h2>
+<p>We may update these terms; we will post the new version with a new effective date and announce material changes via the GitHub repository and any address you have shared with us.</p>
+
+<p><small>Plain-language version. No clickwrap, no dark patterns, no purchase obligation. If something here surprises or worries you — write to <a href="mailto:hello@tdoc.xyz">hello@tdoc.xyz</a> and we will discuss it.</small></p>
+
+</main>
+
+<footer class="colophon">
+  <div class="column">
+    <p>tdoc · <a href="/">home</a> · <a href="/try">try</a> · <a href="/privacy">privacy</a> · <a href="/security">security</a> · <a href="https://github.com/LuciferMors/tdoc" rel="noopener">github</a> · <a href="mailto:hello@tdoc.xyz">hello@tdoc.xyz</a></p>
+  </div>
+</footer>
+
+</body>
+</html>
