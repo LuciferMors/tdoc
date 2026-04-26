@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>tdoc · view</title>
-<meta name="description" content="Open any .tdoc file in the browser. Drop a local archive, paste a URL, or pick an example. Print or save as PDF.">
+<meta name="description" content="Open a tdoc — a PDF with AXON inside — in the browser. Drop the file, paste a URL, or pick the sample. Save as PDF.">
 <link rel="canonical" href="https://tdoc.xyz/view">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta property="og:title" content="tdoc · view">
-<meta property="og:description" content="Open any .tdoc file in the browser. Print or save as PDF.">
+<meta property="og:description" content="Open a tdoc — a PDF with AXON inside — in the browser. Same file, two audiences.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://tdoc.xyz/view">
 <meta name="twitter:card" content="summary">
@@ -143,17 +143,17 @@ iframe.preview{width:100%;height:78vh;border:0;background:white;display:block}
 <main class="column">
 
 <section class="hero">
-  <p class="eyebrow">Open any tdoc-flavoured PDF · in the browser · no install</p>
+  <p class="eyebrow">Open a tdoc · in the browser · no install</p>
   <h1>The universal <em>tdoc viewer.</em></h1>
-  <p>Drop a <code>.pdf</code> downloaded from <a href="/try">/try</a> (or any PDF that has AXON embedded inside) and the viewer renders it with journal-quality typography. The structural data round-trips out of the PDF, into the AXON tree, and back into a freshly-rendered preview. Same file, two audiences.</p>
+  <p>A tdoc is a single <code>.pdf</code> file with the AXON tree embedded inside. Drop one here and you get the <em>both</em> views: the journal-quality rendering humans read, and the structured AXON tree AI agents query. No zip, no folder, no special viewer required — anyone with a PDF reader can open the file you downloaded from <a href="/try">/try</a>.</p>
 </section>
 
 <section>
   <div class="inputs">
     <div class="input-card" id="drop-card">
-      <p class="input-card__title">Drop a <em>.pdf</em> or <em>.tdoc</em></p>
+      <p class="input-card__title">Drop a <em>.pdf</em></p>
       <p class="input-card__hint">— or click to choose —</p>
-      <input type="file" id="file-input" accept=".pdf,.tdoc,.axc,application/pdf,application/zip">
+      <input type="file" id="file-input" accept=".pdf,.axc,.tdoc,application/pdf">
       <button type="button" id="file-btn">Choose file</button>
     </div>
 

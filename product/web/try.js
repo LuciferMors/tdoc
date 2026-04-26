@@ -1,6 +1,6 @@
 // tdoc /try — public demo page.
 // Drag-drop or click → POST to api.tdoc.xyz/v1/try-public → render typed
-// document in three views (Preview / JSON / Raw .axc) + download .tdoc archive.
+// document in three views (Preview / JSON / Raw .axc) + download tdoc PDF.
 // CSP: script-src 'self', no eval, no inline. connect-src includes api.tdoc.xyz.
 
 (() => {
@@ -281,27 +281,9 @@
     setTimeout(() => URL.revokeObjectURL(url), 0);
   });
 
-  on("download-tdoc-btn", () => {
-    if (!lastData || !lastData.archive_b64) {
-      setStatus("no archive on this response — try again", "error");
-      return;
-    }
-    track("try_downloaded", { format: "tdoc" });
-    const bytes = b64ToBytes(lastData.archive_b64);
-    // application/zip is the underlying container; .tdoc filename is the
-    // brand. application/octet-stream would also work; zip is more honest
-    // because the archive really is a deterministic ZIP.
-    const blob = new Blob([bytes], { type: "application/zip" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download =
-      (lastSourceName.replace(/\.[^.]+$/, "") || "document") + ".tdoc";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
-  });
+  // Note: the legacy ZIP-archive download button was removed. A tdoc is now
+  // a single PDF (with AXON embedded inside as PDF/A-3 attachments). Power
+  // users who want the raw ZIP can decode response.archive_b64 themselves.
 
   // ─── "Try with sample" — fetches /sample.axc and uploads it ─
   // Lets a visitor without a PDF in hand still see the demo work.

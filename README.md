@@ -13,17 +13,21 @@ Deterministic, semantic, signable documents. A `.pdf` you can open in every view
 - **Quickstart**: `examples/quickstart.ipynb` — install → typed paper → query → render → sign, in 30 seconds. [Open in Colab](https://colab.research.google.com/github/LuciferMors/tdoc/blob/main/examples/quickstart.ipynb).
 - **Product** (hosted API): `product/` — see `product/README.md`.
 
-## The AXON format vs the `.tdoc` file extension
+## A tdoc is a PDF
 
-- **AXON** is the open format. Open spec, Apache-2.0 reference implementation. Anyone can build tools on it.
-- **`.tdoc`** is the standard file extension for AXON archives. A `.tdoc` file *is* an AXON archive.
-- Readers that support AXON also accept `.axon` for backwards compatibility.
+> A **tdoc** is a normal PDF file with the **AXON** tree embedded inside as
+> PDF/A-3 attachments. It opens in Preview, Acrobat, Chrome, Safari, email,
+> LMS — anywhere PDF works. AI agents extract the structured AXON layer
+> with one call, never rendering the visual page.
 
-Think of it like `.png` vs PNG: one is the file extension users see, the other is the open standard.
+- **File extension**: `.pdf` — so it just works.
+- **Format on the wire**: PDF + embedded `axon-content.axc`, `axon-manifest.json`, `axon-render.axr`, `axon-signature.json`.
+- **AXON** is the open format inside. Apache-2.0 spec + reference. Anyone can author, render, sign, or verify a tdoc without our service.
+- Legacy `.tdoc` ZIP archives from earlier builds still upload-roundtrip via the API for backwards compatibility, but every tool in the tdoc surface (`/try`, `/view`, the SDK) now produces and consumes the PDF form.
 
 ## Status
 
-Early-alpha reference. Spec is complete; implementation covers most of it and ships with **50 passing tests** (32 format + 18 API) covering the load-bearing invariants. Landing is live at https://tdoc.xyz with Mozilla Observatory **A+ · 125/125 · 10/10 tests**.
+Public beta. AXON v1.0 core + v1.1 semantic research blocks. Reference implementation ships with **103 passing tests** covering parse, render, archive, sign/verify, validator, and the v1.1 schema. Landing is live at https://tdoc.xyz with Mozilla Observatory **A+ · 125/125** on the apex and **A+ · 130** on the API surface.
 
 ## Install
 

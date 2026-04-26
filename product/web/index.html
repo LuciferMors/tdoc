@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>tdoc</title>
-<meta name="description" content="tdoc is a typed, queryable, signable document format for the age of language-model agents. A .tdoc file carries declared types on every cell, an Ed25519 signature over canonical bytes, and a deterministic byte identity that does not drift.">
+<meta name="description" content="A tdoc is a normal PDF with the typed AXON tree embedded inside. Humans see a journal-quality paper. AI agents read the structured layer directly — no rendering, no parser, no separate file.">
 <meta property="og:title" content="tdoc">
 <meta property="og:description" content="Typed documents. Declared numbers. Signed archives. For agents that must cite, not guess.">
 <meta property="og:type" content="website">
@@ -953,9 +953,10 @@ button{ font: inherit; color: inherit; background: none; border: 0; padding: 0; 
 
     <p>
       The spec is open. The reference implementation is a single file of
-      Python. A `.tdoc` archive carries every declaration, every signature,
-      every deterministic byte &mdash; ready for agents that must cite,
-      verify, and be accountable.
+      Python. A <em>tdoc</em> is a single PDF that carries every declaration,
+      every signature, every deterministic byte &mdash; embedded inside the
+      same file a human opens in Preview &mdash; ready for agents that must
+      cite, verify, and be accountable.
     </p>
 
     <p class="letter__signoff">
