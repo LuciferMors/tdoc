@@ -170,7 +170,7 @@ def _page_template(
 <meta name="theme-color" content="#fafaf7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#141310" media="(prefers-color-scheme: dark)">
 
-<script src="./theme.js?v=2"></script>
+<script src="./theme.js?v=3"></script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -264,8 +264,8 @@ a:hover{{color:var(--oxblood);text-decoration-color:var(--oxblood)}}
 
 </main>
 
-<script src="./analytics-config.js?v=1"></script>
-<script src="./analytics.js?v=1"></script>
+<script src="./analytics-config.js?v=3"></script>
+<script src="./analytics.js?v=3"></script>
 
 <footer class="colophon">
   <div class="column">
