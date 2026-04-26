@@ -2434,10 +2434,14 @@ def encode_pdf_with_axon(doc: AxonDocument) -> bytes:
       axon-signature.json    — hash-integrity record
       axon-spec-pointer.txt  — pointer to the AXON spec URL
 
-    Rendering uses PyMuPDF Page.insert_textbox with the standard PDF base-14
-    fonts (Helvetica, Times-Roman, Courier). These are guaranteed present in
-    every PDF viewer ever built — no font-embedding gymnastics, no CSS-into-
-    PDF translation, no surprise blank pages.
+    Rendering uses **line-by-line PyMuPDF Page.insert_text** with the
+    standard PDF base-14 fonts (Helvetica, Helvetica-Bold, Times-Roman,
+    Courier) under WinAnsi encoding. This produces the simplest, most
+    compatible PDF text instructions possible — the `Tj` operator with a
+    Type-1 standard font, which every PDF viewer for 30+ years has
+    handled correctly (Preview, Acrobat, Chrome, Safari, Firefox, mobile,
+    journal portals, in-browser viewers). No CSS, no Story, no embedded
+    CID fonts, no surprise blank pages.
     """
     try:
         import pymupdf as fitz  # type: ignore[import-not-found]
@@ -2458,154 +2462,213 @@ def encode_pdf_with_axon(doc: AxonDocument) -> bytes:
     # 2. Walk the tree → list of layout blocks.
     blocks = _pdf_collect_blocks(doc.content)
 
-    # 3. Layout pass — A4 pages, 22 mm margins, Times body, Helvetica heads.
+    # 3. Layout — A4, 22 mm margins. Helvetica-Bold for headings + badges,
+    # Times-Roman for body, Courier for code/k=v.
     pdf = fitz.open()
     A4 = fitz.paper_rect("A4")
     margin = 62  # ~22 mm
     page_w, page_h = A4.width, A4.height
     text_w = page_w - 2 * margin
-    accent = (122 / 255.0, 12 / 255.0, 26 / 255.0)  # oxblood
+
+    accent = (0.478, 0.047, 0.102)  # oxblood
     ink = (0.06, 0.06, 0.05)
     ink_2 = (0.18, 0.17, 0.15)
     ink_3 = (0.36, 0.34, 0.30)
 
+    # WinAnsi base-14 fonts — every PDF viewer ships these.
+    fonts = {
+        "helv": fitz.Font("helv"),
+        "hebo": fitz.Font("hebo"),
+        "tiro": fitz.Font("tiro"),
+        "cour": fitz.Font("cour"),
+    }
+
+    # WinAnsi encoding can't represent every Unicode codepoint. Substitute
+    # common typographic characters that base-14 fonts don't carry.
+    _WINANSI_SUBS = str.maketrans(
+        {
+            "—": "-",
+            "–": "-",
+            "·": "-",
+            "•": "-",
+            "“": '"',
+            "”": '"',
+            "‘": "'",
+            "’": "'",
+            "…": "...",
+        }
+    )
+
+    def to_winansi(text: str) -> str:
+        if not text:
+            return ""
+        return text.translate(_WINANSI_SUBS)
+
+    def font_for(name: str) -> "fitz.Font":
+        return fonts.get(name, fonts["tiro"])
+
+    def measure(text: str, font_name: str, size: float) -> float:
+        return font_for(font_name).text_length(text, fontsize=size)
+
+    def wrap(text: str, font_name: str, size: float, max_w: float) -> list:
+        """Greedy word-wrap; falls back to char-wrap for words wider than max_w."""
+        if not text:
+            return []
+        words = text.split()
+        out, current = [], ""
+        for w in words:
+            test = (current + " " + w) if current else w
+            if measure(test, font_name, size) <= max_w:
+                current = test
+                continue
+            if current:
+                out.append(current)
+                current = ""
+            if measure(w, font_name, size) <= max_w:
+                current = w
+            else:
+                buf = ""
+                for ch in w:
+                    if measure(buf + ch, font_name, size) <= max_w:
+                        buf += ch
+                    else:
+                        if buf:
+                            out.append(buf)
+                        buf = ch
+                if buf:
+                    current = buf
+        if current:
+            out.append(current)
+        return out
+
     page = pdf.new_page(width=page_w, height=page_h)
-    y = margin
+    cursor_y = margin
 
     def new_page() -> None:
-        nonlocal page, y
+        nonlocal page, cursor_y
         page = pdf.new_page(width=page_w, height=page_h)
-        y = margin
+        cursor_y = margin
 
-    def remaining() -> float:
-        return page_h - margin - y
-
-    def lines_for(text: str, fontname: str, fontsize: float) -> int:
-        """Estimate how many wrapped lines `text` will need at this width."""
-        if not text:
-            return 0
-        # Conservative char-width estimate: ~0.5 em.
-        em = fontsize * 0.52
-        chars_per_line = max(10, int(text_w / em))
-        words, line, count = text.split(), 0, 1
-        for w in words:
-            if line + len(w) + 1 > chars_per_line:
-                count += 1
-                line = len(w) + 1
-            else:
-                line += len(w) + 1
-        return count
-
-    def put(
-        text: str,
-        fontname: str,
-        fontsize: float,
+    def write_lines(
+        lines,
+        font_name: str,
+        size: float,
         color,
         *,
-        leading: float = 1.25,
-        x_offset: float = 0.0,
+        leading: float = 1.32,
         indent: float = 0.0,
     ) -> None:
-        nonlocal y
+        """Place each line via Page.insert_text — single Tj operator per line."""
+        nonlocal cursor_y
+        line_h = size * leading
+        for line in lines:
+            if cursor_y + line_h > page_h - margin:
+                new_page()
+            # insert_text wants the baseline; baseline ~ top + 0.85 * size.
+            page.insert_text(
+                (margin + indent, cursor_y + size * 0.85),
+                line,
+                fontname=font_name,
+                fontsize=size,
+                color=color,
+            )
+            cursor_y += line_h
+
+    def gap(h: float) -> None:
+        nonlocal cursor_y
+        cursor_y += h
+
+    def write_text(
+        text: str,
+        font_name: str,
+        size: float,
+        color,
+        *,
+        leading: float = 1.32,
+        indent: float = 0.0,
+    ) -> None:
         if not text:
             return
-        # Estimate height; if no room, page-break.
-        n_lines = max(1, lines_for(text, fontname, fontsize))
-        needed = n_lines * fontsize * leading + 4
-        if needed > remaining():
-            new_page()
-        rect = fitz.Rect(
-            margin + x_offset + indent, y, margin + text_w, page_h - margin
+        write_lines(
+            wrap(to_winansi(text), font_name, size, text_w - indent),
+            font_name,
+            size,
+            color,
+            leading=leading,
+            indent=indent,
         )
-        # insert_textbox returns a positive height used or a negative
-        # number if the box was too small. We've sized generously, so
-        # this should always fit; if it returns -1 we paginate and retry.
-        used = page.insert_textbox(
-            rect,
-            text,
-            fontname=fontname,
-            fontsize=fontsize,
-            color=color,
-            align=fitz.TEXT_ALIGN_LEFT,
-            lineheight=leading,
-        )
-        if used < 0:
-            new_page()
-            rect = fitz.Rect(
-                margin + x_offset + indent, y, margin + text_w, page_h - margin
-            )
-            page.insert_textbox(
-                rect,
-                text,
-                fontname=fontname,
-                fontsize=fontsize,
-                color=color,
-                align=fitz.TEXT_ALIGN_LEFT,
-                lineheight=leading,
-            )
-        # Advance y by the estimated needed height (avoids over/under).
-        y += needed
 
-    # 4. Document title (from manifest) at top of page 1.
+    # 4. Title block.
     title = (doc.manifest.title or "Untitled").strip()
     if title:
-        put(title, "hebo", 20, ink, leading=1.15)
-        y += 6
+        write_text(title, "hebo", 20, ink, leading=1.18)
+        gap(2)
         if doc.manifest.document_type:
-            put(
-                doc.manifest.document_type.replace(".", " · "),
+            write_text(
+                doc.manifest.document_type.replace(".", " - "),
                 "helv",
                 8.5,
                 ink_3,
                 leading=1.2,
             )
-            y += 4
-        # Hairline rule
-        page.draw_line((margin, y), (margin + text_w, y), color=ink_3, width=0.5)
-        y += 14
+        gap(6)
+        page.draw_line(
+            (margin, cursor_y),
+            (margin + text_w, cursor_y),
+            color=ink_3,
+            width=0.5,
+        )
+        gap(14)
 
-    # 5. Walk the blocks.
+    # 5. Render every block from the walk.
     for kind, fields in blocks:
         if kind == "space":
-            y += float(fields.get("h", 6))
+            gap(float(fields.get("h", 6)))
             continue
         if kind == "heading":
-            level = fields["level"]
-            text = fields.get("text", "")
+            level = fields.get("level", 2)
             sizes = {1: 16, 2: 13, 3: 11, 4: 10, 5: 10, 6: 10}
-            put(text, "hebo", sizes.get(level, 11), ink, leading=1.2)
-            y += 4
+            write_text(
+                fields.get("text", ""), "hebo", sizes.get(level, 11), ink, leading=1.2
+            )
+            gap(3)
             continue
         if kind == "para":
-            put(fields.get("text", ""), "tiro", 10.5, ink_2, leading=1.35)
-            y += 4
+            write_text(fields.get("text", ""), "tiro", 10.5, ink_2)
+            gap(3)
             continue
         if kind == "li":
-            bullet = fields.get("bullet", "•")
-            text = fields.get("text", "")
-            put(f"{bullet}  {text}", "tiro", 10.5, ink_2, leading=1.35, indent=12)
+            write_text(
+                f"{fields.get('bullet', '-')}  {fields.get('text', '')}",
+                "tiro",
+                10.5,
+                ink_2,
+                indent=12,
+            )
             continue
         if kind == "badge":
-            text = fields.get("text", "")
             color = accent if fields.get("accent") else ink_3
-            put(text, "hebo", 7.8, color, leading=1.1)
-            y += 1
+            write_text(fields.get("text", ""), "hebo", 7.8, color, leading=1.15)
+            gap(1)
             continue
         if kind == "kv":
-            pairs = fields.get("pairs", [])
-            for k, v in pairs:
-                put(f"{k:18s}  {v}", "cour", 9, ink_2, leading=1.3)
+            for k, v in fields.get("pairs", []):
+                write_text(f"{k:18s}  {v}", "cour", 9, ink_2, leading=1.3)
             continue
         if kind == "mono":
-            put(fields.get("text", ""), "cour", 9, ink_2, leading=1.3)
-            y += 4
+            write_text(fields.get("text", ""), "cour", 9, ink_2, leading=1.3)
+            gap(3)
             continue
         if kind == "table":
-            rows = fields.get("rows", [])
-            for row in rows:
-                line = "  ".join(str(c)[:30] for c in row)
-                put(line, "cour", 9, ink_2, leading=1.3)
-            y += 4
+            for row in fields.get("rows", []):
+                write_text(
+                    "  ".join(str(c)[:30] for c in row),
+                    "cour",
+                    9,
+                    ink_2,
+                    leading=1.3,
+                )
+            gap(3)
             continue
 
     # 6. PDF-level metadata (so file managers + Preview Inspector show it).

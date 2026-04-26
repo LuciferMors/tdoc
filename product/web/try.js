@@ -269,10 +269,11 @@
     }
     track("try_downloaded", { format: "tdoc" });
     const bytes = b64ToBytes(lastData.pdf_b64);
-    // The bytes are a valid PDF — Content-Type says so. The .tdoc extension
-    // is the brand. Any PDF reader opens this file (Preview / Acrobat /
-    // browser); macOS first-time may need right-click → Open With → Preview.
-    const blob = new Blob([bytes], { type: "application/pdf" });
+    // application/octet-stream — opaque MIME — so the browser respects the
+    // .tdoc filename exactly. With application/pdf, Safari/Chrome on macOS
+    // appends ".pdf" to the download name to "be helpful", producing
+    // foo.tdoc.pdf. The bytes ARE a valid PDF; any reader opens them.
+    const blob = new Blob([bytes], { type: "application/octet-stream" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -283,7 +284,7 @@
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 0);
     setStatus(
-      "saved " + a.download + " — open with any PDF reader",
+      "saved " + a.download + " — open with any PDF reader (Preview / Acrobat / browser)",
       "ok"
     );
   });
