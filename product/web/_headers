@@ -41,3 +41,15 @@
   # Hide framework fingerprint.
   X-Powered-By:
   Server: tdoc
+
+# Per-path overrides — short cache on JS so deploys propagate in minutes,
+# not the 4-hour CF Pages default. HTML is already always-revalidate.
+# When we move to content-hash filenames we can flip these back to long-lived.
+/try.js
+  Cache-Control: public, max-age=300, must-revalidate
+
+/app.js
+  Cache-Control: public, max-age=300, must-revalidate
+
+/theme.js
+  Cache-Control: public, max-age=300, must-revalidate

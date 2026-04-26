@@ -13,7 +13,10 @@
 <meta name="theme-color" content="#fafaf7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#141310" media="(prefers-color-scheme: dark)">
 
-<script src="./theme.js"></script>
+<!-- ?v= is a cache-buster: bump this string when changing theme.js / try.js
+     so users on a stale Cloudflare-cached copy fetch the new version
+     instead of crashing on a renamed DOM id. -->
+<script src="./theme.js?v=2"></script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -262,7 +265,7 @@ pre.json .num, pre.json .bool, pre.json .null{ color: var(--ink-3); }
   </div>
 </footer>
 
-<script src="./try.js"></script>
+<script src="./try.js?v=2"></script>
 
 </body>
 </html>

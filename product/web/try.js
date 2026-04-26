@@ -224,7 +224,17 @@
   }
 
   // ─── Toolbar: Copy current tab + Download .tdoc ──────────────
-  $("copy-btn").onclick = async () => {
+  // Defensive null-guards: if a future deploy renames or removes a
+  // toolbar button, the page must NOT crash at module load. Without this
+  // a stale browser cache (e.g. user on old try.js, fresh try.html) would
+  // throw "Cannot set properties of null (setting 'onclick')" and break
+  // every other feature on the page including upload itself.
+  function on(id, handler) {
+    const el = $(id);
+    if (el) el.onclick = handler;
+  }
+
+  on("copy-btn", async () => {
     if (!lastData) return;
     let text = "";
     if (activeTab === "axc")  text = lastData.axc || "";
@@ -232,14 +242,17 @@
     else text = lastData.html || "";
     try {
       await navigator.clipboard.writeText(text);
-      $("copy-btn").textContent = "copied";
-      setTimeout(() => ($("copy-btn").textContent = "Copy current"), 1200);
+      const btn = $("copy-btn");
+      if (btn) {
+        btn.textContent = "copied";
+        setTimeout(() => { if (btn) btn.textContent = "Copy current"; }, 1200);
+      }
     } catch (e) {
       setStatus("copy blocked by browser — select the text manually", "error");
     }
-  };
+  });
 
-  $("download-tdoc-btn").onclick = () => {
+  on("download-tdoc-btn", () => {
     if (!lastData || !lastData.archive_b64) {
       setStatus("no archive on this response — try again", "error");
       return;
@@ -258,7 +271,7 @@
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 0);
-  };
+  });
 
   // ─── Drag-and-drop wiring ────────────────────────────────────
   drop.addEventListener("click", (e) => {
