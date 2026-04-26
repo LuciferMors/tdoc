@@ -772,6 +772,16 @@ def verify_document_ed25519(
 _AXON_ZIP_EPOCH = (1980, 1, 1, 0, 0, 0)
 
 
+def encode_archive_to_bytes(doc: AxonDocument) -> bytes:
+    """Encode an AxonDocument to a deterministic .tdoc archive in memory.
+
+    Same byte-deterministic contract as encode_archive(); use this when you
+    want the bytes directly (HTTP response, embedding in another archive)
+    without going through the filesystem.
+    """
+    return _encode_archive_impl(doc)
+
+
 def encode_archive(doc: AxonDocument, output_path: str) -> str:
     """Encode an AxonDocument to a deterministic .axon archive.
 
@@ -785,6 +795,13 @@ def encode_archive(doc: AxonDocument, output_path: str) -> str:
       - uses canonical JSON for all metadata (sorted keys, UTF-8, fixed indent),
       - excludes wall-clock timestamps from the hash-integrity signature.
     """
+    data = _encode_archive_impl(doc)
+    with open(output_path, "wb") as f:
+        f.write(data)
+    return output_path
+
+
+def _encode_archive_impl(doc: AxonDocument) -> bytes:
     content_axc = serialize_axc(doc.content)
     render_axr = serialize_axr(doc.render)
 
@@ -845,11 +862,7 @@ def encode_archive(doc: AxonDocument, output_path: str) -> str:
             info.external_attr = 0o644 << 16  # fixed permissions for determinism
             zf.writestr(info, data, compresslevel=9)
 
-    data = buf.getvalue()
-    with open(output_path, "wb") as f:
-        f.write(data)
-
-    return output_path
+    return buf.getvalue()
 
 
 def _compute_alt_coverage(root: Node) -> float:

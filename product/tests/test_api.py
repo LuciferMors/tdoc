@@ -209,3 +209,52 @@ def test_structure_response_carries_real_hashes():
     body = r.json()
     assert body["content_hash"] and len(body["content_hash"]) >= 16
     assert body["render_hash"]
+
+
+# ─── Rich-response contract: html + tree + archive_b64 ──────────
+# The /try page reads these; if any is missing or malformed, the
+# Preview tab is blank, the JSON tab is empty, or .tdoc download fails.
+
+
+def test_try_public_returns_html_preview():
+    axc = b"@paragraph:\n  hello\n"
+    files = {"file": ("in.axc", axc, "text/plain")}
+    r = client.post("/v1/try-public", files=files)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert isinstance(body["html"], str)
+    # Some rendered HTML must come back — an empty string is a regression.
+    assert len(body["html"]) > 0
+
+
+def test_try_public_returns_json_tree():
+    axc = b"@paragraph:\n  hello\n"
+    files = {"file": ("in.axc", axc, "text/plain")}
+    r = client.post("/v1/try-public", files=files)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    tree = body["tree"]
+    assert isinstance(tree, dict)
+    assert tree.get("type")  # at minimum a typed root node
+
+
+def test_try_public_returns_downloadable_tdoc_archive():
+    import base64
+    import zipfile
+    import io
+
+    axc = b"@paragraph:\n  hello\n"
+    files = {"file": ("in.axc", axc, "text/plain")}
+    r = client.post("/v1/try-public", files=files)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    archive_b64 = body["archive_b64"]
+    assert archive_b64, "archive_b64 must be non-empty"
+
+    raw = base64.b64decode(archive_b64)
+    # Must be a real ZIP we can open and that contains the manifest +
+    # content entries the .tdoc layout requires.
+    zf = zipfile.ZipFile(io.BytesIO(raw))
+    names = set(zf.namelist())
+    assert "manifest.json" in names
+    assert "content/document.axc" in names

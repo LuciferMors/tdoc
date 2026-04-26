@@ -108,22 +108,53 @@ a:hover{ color: var(--oxblood); text-decoration-color: var(--oxblood); }
 .kv dd{ margin: 0; color: var(--ink-2); overflow-wrap: anywhere; }
 .kv dd em{ color: var(--oxblood); font-style: italic; font-family: var(--serif); }
 
-/* AXC code panel */
-.axc-wrap{ position: relative; border: 1px solid var(--rule); background: var(--paper-2); }
-.axc-toolbar{ display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.9rem; border-bottom: 1px solid var(--rule); font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
-.axc-toolbar button{ background: none; border: 1px solid var(--rule); padding: 0.3rem 0.6rem; font: inherit; color: var(--ink-2); cursor: pointer; letter-spacing: inherit; text-transform: inherit; }
-.axc-toolbar button:hover{ color: var(--oxblood); border-color: var(--oxblood); }
-.axc-toolbar button:focus-visible{ outline: 2px solid var(--oxblood); outline-offset: 2px; }
+/* Result panel + tabbed view (Preview / JSON / Raw .axc) */
+.panel{ position: relative; border: 1px solid var(--rule); background: var(--paper-2); }
+.panel-toolbar{
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;
+  padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--rule);
+  font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3);
+}
+.tabs{ display: flex; gap: 0; }
+.tabs button{
+  background: none; border: 0; border-bottom: 2px solid transparent;
+  padding: 0.45rem 0.9rem; font: inherit; color: var(--ink-3);
+  cursor: pointer; letter-spacing: inherit; text-transform: inherit;
+}
+.tabs button:hover{ color: var(--ink-2); }
+.tabs button[aria-selected="true"]{ color: var(--ink); border-bottom-color: var(--oxblood); }
+.tabs button:focus-visible{ outline: 2px solid var(--oxblood); outline-offset: -2px; }
 
-pre.axc{
+.panel-actions{ display: flex; gap: 0.4rem; }
+.panel-actions button{
+  background: none; border: 1px solid var(--rule); padding: 0.3rem 0.6rem;
+  font: inherit; color: var(--ink-2); cursor: pointer;
+  letter-spacing: inherit; text-transform: inherit;
+}
+.panel-actions button:hover{ color: var(--oxblood); border-color: var(--oxblood); }
+.panel-actions button:focus-visible{ outline: 2px solid var(--oxblood); outline-offset: 2px; }
+.panel-actions button.primary{ color: var(--oxblood); border-color: var(--oxblood); }
+
+.tab-panel{ display: none; }
+.tab-panel[data-active="true"]{ display: block; }
+
+/* HTML preview — sandboxed iframe so any user-uploaded HTML cannot
+   execute scripts, fetch network resources, set cookies, or escape. */
+iframe.preview{
+  width: 100%; height: 60vh; border: 0; background: var(--paper);
+}
+
+pre.axc, pre.json{
   margin: 0; padding: 1.1rem 1.2rem; overflow-x: auto;
   font-family: var(--mono); font-size: 0.82rem; line-height: 1.55;
-  color: var(--ink-2);
-  max-height: 60vh;
+  color: var(--ink-2); max-height: 60vh;
 }
 pre.axc .tag{ color: var(--oxblood); }
 pre.axc .attr{ color: var(--ink-3); }
 pre.axc .typed{ background: var(--oxblood-wash); border-bottom: 1px solid var(--oxblood); }
+pre.json .key{ color: var(--oxblood); }
+pre.json .str{ color: var(--ink-2); }
+pre.json .num, pre.json .bool, pre.json .null{ color: var(--ink-3); }
 
 /* Warnings */
 .warnings{ margin: 1.4rem 0 0; font-family: var(--mono); font-size: 0.82rem; color: var(--ink-3); }
@@ -163,8 +194,8 @@ pre.axc .typed{ background: var(--oxblood-wash); border-bottom: 1px solid var(--
 
 <section class="try-hero">
   <p class="eyebrow">Live demo · no signup · 5 MiB limit</p>
-  <h1>Drop a file. <em>See it typed.</em></h1>
-  <p>Your document goes to <code>api.tdoc.xyz/v1/try-public</code>, comes back as an AXON tree with declared types on every cell. Nothing is stored. Files leave your browser only over TLS.</p>
+  <h1>Drop a file. <em>Get the typed document.</em></h1>
+  <p>Your document goes to <code>api.tdoc.xyz/v1/try-public</code> and comes back four ways: a rendered <em>preview</em>, a clean <em>JSON tree</em> for AI agents, the raw <em>.axc</em> notation, and the actual signed <em>.tdoc</em> archive you can download. Nothing is stored. Files leave your browser only over TLS.</p>
 </section>
 
 <section>
@@ -188,15 +219,32 @@ pre.axc .typed{ background: var(--oxblood-wash); border-bottom: 1px solid var(--
       <dt>Nodes</dt><dd id="r-nodes">—</dd>
     </dl>
 
-    <div class="axc-wrap">
-      <div class="axc-toolbar">
-        <span>AXON content notation (.axc)</span>
-        <span>
-          <button type="button" id="copy-btn">Copy</button>
-          <button type="button" id="download-btn">Download .axc</button>
-        </span>
+    <div class="panel">
+      <div class="panel-toolbar">
+        <div class="tabs" role="tablist" aria-label="Output format">
+          <button type="button" role="tab" aria-selected="true"  aria-controls="tab-preview" id="tab-btn-preview">Preview</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="tab-json"    id="tab-btn-json">JSON</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="tab-axc"     id="tab-btn-axc">Raw .axc</button>
+        </div>
+        <div class="panel-actions">
+          <button type="button" id="copy-btn">Copy current</button>
+          <button type="button" id="download-tdoc-btn" class="primary">Download .tdoc</button>
+        </div>
       </div>
-      <pre class="axc" id="r-axc"></pre>
+
+      <!-- Preview: sandboxed iframe — no scripts, no same-origin, no anything.
+           User-uploaded content cannot escape this frame. -->
+      <div class="tab-panel" id="tab-preview" role="tabpanel" aria-labelledby="tab-btn-preview" data-active="true">
+        <iframe class="preview" id="r-preview" sandbox="" title="Document preview"></iframe>
+      </div>
+
+      <div class="tab-panel" id="tab-json" role="tabpanel" aria-labelledby="tab-btn-json">
+        <pre class="json" id="r-json"></pre>
+      </div>
+
+      <div class="tab-panel" id="tab-axc" role="tabpanel" aria-labelledby="tab-btn-axc">
+        <pre class="axc" id="r-axc"></pre>
+      </div>
     </div>
 
     <div class="warnings" id="r-warnings" hidden>

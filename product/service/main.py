@@ -37,8 +37,10 @@ from axon import (  # noqa: E402
     compute_document_hashes,
     convert_axc_string,
     convert_pdf,
+    encode_archive_to_bytes,
     execute_aql,
     parse_axc,
+    render_html,
     serialize_axc,
     serialize_axr,
     sign_document_ed25519,
@@ -125,6 +127,13 @@ class StructureResponse(BaseModel):
     axc: str
     nodes: int
     warnings: list[str]
+    # Demo-friendly extras: a rendered HTML preview, a clean JSON tree
+    # (every LLM tool can ingest this natively without a parser), and the
+    # actual .tdoc archive (signed deterministic ZIP) base64-encoded so
+    # callers can download the real product, not the raw .axc text.
+    html: str = ""
+    tree: dict = {}
+    archive_b64: str = ""
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -135,6 +144,9 @@ class StructureResponse(BaseModel):
                 "axc": '@section [id="s1"]:\n  @heading [level=1]:\n    Introduction\n',
                 "nodes": 142,
                 "warnings": ["@figure missing alt-text (id=fig-3)"],
+                "html": "<article>…rendered HTML…</article>",
+                "tree": {"type": "document", "children": []},
+                "archive_b64": "UEsDBBQAAAAIAA…",
             }
         }
     )
@@ -287,6 +299,40 @@ def _count_nodes(node) -> int:
     return 1 + sum(_count_nodes(c) for c in node.children)
 
 
+def _build_rich_response(doc) -> StructureResponse:
+    """Common path for /v1/structure and /v1/try-public — packs the same
+    document into the four artifacts a buyer or agent might want:
+
+      - axc        : canonical text serialization (the format authors' view)
+      - html       : rendered HTML preview (the human's view)
+      - tree       : pure JSON tree (the LLM's view — no parser required)
+      - archive_b64: base64 of the deterministic .tdoc archive (the product)
+
+    Plus the integrity hashes and validator warnings.
+    """
+    import base64
+
+    axc = serialize_axc(doc.content)
+    axr = serialize_axr(doc.render)
+    content_hash, render_hash = compute_document_hashes(axc, axr)
+    html = render_html(doc)
+    tree = doc.content.to_dict()
+    archive_bytes = encode_archive_to_bytes(doc)
+    archive_b64 = base64.b64encode(archive_bytes).decode("ascii")
+    result = validate(doc)
+    return StructureResponse(
+        document_id=doc.manifest.document_id,
+        content_hash=content_hash,
+        render_hash=render_hash,
+        axc=axc,
+        nodes=_count_nodes(doc.content),
+        warnings=result.warnings,
+        html=html,
+        tree=tree,
+        archive_b64=archive_b64,
+    )
+
+
 @app.post("/v1/structure", response_model=StructureResponse)
 async def structure(
     file: UploadFile = File(...),
@@ -329,28 +375,12 @@ async def structure(
     except AxonSecurityError as e:
         raise HTTPException(status_code=400, detail=f"Unsafe input: {e}")
 
-    axc = serialize_axc(doc.content)
-    axr = serialize_axr(doc.render)
-    node_count = _count_nodes(doc.content)
-
     try:
         record_units(plan, amount=max(1, len(blob) // 50_000))  # ≈ 1 unit per 50 KB
     except PlanQuotaExceeded as e:
         raise HTTPException(status_code=402, detail=str(e))
 
-    # The conversion path doesn't populate manifest hashes — those land only
-    # when archiving. Compute them on the fly so the API response always has
-    # real fingerprints (otherwise the UI shows empty strings).
-    content_hash, render_hash = compute_document_hashes(axc, axr)
-    result = validate(doc)
-    return StructureResponse(
-        document_id=doc.manifest.document_id,
-        content_hash=content_hash,
-        render_hash=render_hash,
-        axc=axc,
-        nodes=node_count,
-        warnings=result.warnings,
-    )
+    return _build_rich_response(doc)
 
 
 # Public, unauthenticated demo endpoint. Powers the /try page on tdoc.xyz so a
@@ -406,19 +436,7 @@ async def try_public(
     except AxonSecurityError as e:
         raise HTTPException(status_code=400, detail=f"Unsafe input: {e}")
 
-    axc = serialize_axc(doc.content)
-    axr = serialize_axr(doc.render)
-    node_count = _count_nodes(doc.content)
-    content_hash, render_hash = compute_document_hashes(axc, axr)
-    result = validate(doc)
-    return StructureResponse(
-        document_id=doc.manifest.document_id,
-        content_hash=content_hash,
-        render_hash=render_hash,
-        axc=axc,
-        nodes=node_count,
-        warnings=result.warnings,
-    )
+    return _build_rich_response(doc)
 
 
 @app.post("/v1/query", response_model=QueryResponse)

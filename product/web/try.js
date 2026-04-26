@@ -1,5 +1,6 @@
 // tdoc /try — public demo page.
-// Drag-drop or click → POST to api.tdoc.xyz/v1/try-public → render typed AXC.
+// Drag-drop or click → POST to api.tdoc.xyz/v1/try-public → render typed
+// document in three views (Preview / JSON / Raw .axc) + download .tdoc archive.
 // CSP: script-src 'self', no eval, no inline. connect-src includes api.tdoc.xyz.
 
 (() => {
@@ -53,22 +54,20 @@
     status.appendChild(document.createTextNode(msg));
   }
 
-  // ─── HTML-safe AXC highlighting ──────────────────────────────
-  // First escape the entire string, THEN run regex replacements on the
-  // already-escaped text. The regex never sees raw user content, so we
-  // can't accidentally inject markup from a malicious document body.
+  // ─── HTML escape (always run before any regex-based highlighting) ──
   function escapeHtml(s) {
     return s
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
   }
-  function highlight(axc) {
+
+  // ─── AXC syntax highlighter ──────────────────────────────────
+  function highlightAxc(axc) {
     const safe = escapeHtml(axc);
     return safe
       .replace(/(@[a-z][a-z0-9_-]*)/gi, '<span class="tag">$1</span>')
       .replace(/(\[[^\]\n]*\])/g, (m) => {
-        // Highlight typed cells (data-type="…") more strongly.
         if (/data-type\s*=\s*"[^"]+"/.test(m)) {
           return '<span class="attr typed">' + m + "</span>";
         }
@@ -76,8 +75,60 @@
       });
   }
 
+  // ─── JSON pretty-printer with HTML-safe highlighting ─────────
+  function highlightJson(value) {
+    const pretty = JSON.stringify(value, null, 2);
+    if (pretty == null) return "";
+    return escapeHtml(pretty).replace(
+      /("(\\.|[^"\\])*")(\s*:)?|\b(true|false|null)\b|(-?\d+(\.\d+)?([eE][+-]?\d+)?)/g,
+      (m, str, _esc, colon, kw, num) => {
+        if (str) {
+          // If a colon follows, this string is a key; otherwise a value.
+          return colon
+            ? '<span class="key">' + str + "</span>" + colon
+            : '<span class="str">' + str + "</span>";
+        }
+        if (kw) {
+          const cls = kw === "null" ? "null" : "bool";
+          return '<span class="' + cls + '">' + kw + "</span>";
+        }
+        if (num) return '<span class="num">' + num + "</span>";
+        return m;
+      }
+    );
+  }
+
+  // ─── Tab switching ───────────────────────────────────────────
+  const TABS = ["preview", "json", "axc"];
+  let activeTab = "preview";
+
+  function setTab(name) {
+    if (!TABS.includes(name)) return;
+    activeTab = name;
+    TABS.forEach((t) => {
+      const btn = $("tab-btn-" + t);
+      const panel = $("tab-" + t);
+      if (btn) btn.setAttribute("aria-selected", t === name ? "true" : "false");
+      if (panel) panel.dataset.active = t === name ? "true" : "false";
+    });
+  }
+  TABS.forEach((t) => {
+    const btn = $("tab-btn-" + t);
+    if (btn) btn.addEventListener("click", () => setTab(t));
+  });
+
+  // ─── base64 → Uint8Array (for .tdoc download) ────────────────
+  function b64ToBytes(b64) {
+    const bin = atob(b64);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
   // ─── Upload + render ─────────────────────────────────────────
   let busy = false;
+  let lastData = null;
+  let lastSourceName = "document";
 
   async function upload(f) {
     if (busy || !f) return;
@@ -101,7 +152,8 @@
     const fd = new FormData();
     fd.append("file", f);
     fd.append("title", f.name.replace(/\.[^.]+$/, "") || "Demo");
-    fd.append("document_type", "article.research");
+    // Default document_type is set on the server (preprint for the demo
+    // endpoint), so we don't send one and let the API pick.
 
     try {
       const r = await fetch(API, { method: "POST", body: fd, mode: "cors" });
@@ -116,7 +168,9 @@
         return;
       }
       const data = await r.json();
-      render(data, f.name);
+      lastData = data;
+      lastSourceName = f.name;
+      render(data);
       setStatus(
         "done — typed " + data.nodes + " nodes from " + f.name,
         "ok"
@@ -132,13 +186,25 @@
     }
   }
 
-  function render(data, sourceName) {
+  function render(data) {
     $("r-doc-id").textContent       = data.document_id || "—";
     $("r-content-hash").textContent = data.content_hash || "—";
     $("r-render-hash").textContent  = data.render_hash || "—";
     $("r-nodes").textContent        = String(data.nodes ?? "—");
-    $("r-axc").innerHTML            = highlight(data.axc || "");
 
+    // Preview — sandboxed iframe via srcdoc. The sandbox="" attribute (in
+    // try.html) revokes every capability, so even if data.html contained
+    // a malicious <script>, it could not run, fetch, or read cookies.
+    const iframe = $("r-preview");
+    iframe.srcdoc = data.html || "<p style=\"font-family:sans-serif;color:#888;padding:2rem\">no rendered HTML</p>";
+
+    // JSON tree
+    $("r-json").innerHTML = highlightJson(data.tree || {});
+
+    // Raw .axc
+    $("r-axc").innerHTML = highlightAxc(data.axc || "");
+
+    // Warnings
     const warnEl = $("r-warnings");
     const list = $("r-warnings-list");
     list.innerHTML = "";
@@ -153,35 +219,46 @@
       warnEl.hidden = true;
     }
 
-    $("copy-btn").onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(data.axc || "");
-        $("copy-btn").textContent = "copied";
-        setTimeout(() => ($("copy-btn").textContent = "Copy"), 1200);
-      } catch (e) {
-        setStatus("copy blocked by browser — select the text manually", "error");
-      }
-    };
-    $("download-btn").onclick = () => {
-      // application/octet-stream — opaque MIME — so the browser respects
-      // the `download` attribute filename verbatim. With text/plain, Safari
-      // and some Chromium variants append ".txt", producing "foo.axc.txt".
-      const blob = new Blob([data.axc || ""], {
-        type: "application/octet-stream",
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download =
-        (sourceName.replace(/\.[^.]+$/, "") || "document") + ".axc";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 0);
-    };
-
+    setTab("preview");
     results.dataset.shown = "true";
   }
+
+  // ─── Toolbar: Copy current tab + Download .tdoc ──────────────
+  $("copy-btn").onclick = async () => {
+    if (!lastData) return;
+    let text = "";
+    if (activeTab === "axc")  text = lastData.axc || "";
+    else if (activeTab === "json") text = JSON.stringify(lastData.tree || {}, null, 2);
+    else text = lastData.html || "";
+    try {
+      await navigator.clipboard.writeText(text);
+      $("copy-btn").textContent = "copied";
+      setTimeout(() => ($("copy-btn").textContent = "Copy current"), 1200);
+    } catch (e) {
+      setStatus("copy blocked by browser — select the text manually", "error");
+    }
+  };
+
+  $("download-tdoc-btn").onclick = () => {
+    if (!lastData || !lastData.archive_b64) {
+      setStatus("no archive on this response — try again", "error");
+      return;
+    }
+    const bytes = b64ToBytes(lastData.archive_b64);
+    // application/zip is the underlying container; .tdoc filename is the
+    // brand. application/octet-stream would also work; zip is more honest
+    // because the archive really is a deterministic ZIP.
+    const blob = new Blob([bytes], { type: "application/zip" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download =
+      (lastSourceName.replace(/\.[^.]+$/, "") || "document") + ".tdoc";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  };
 
   // ─── Drag-and-drop wiring ────────────────────────────────────
   drop.addEventListener("click", (e) => {
