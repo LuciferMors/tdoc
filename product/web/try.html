@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tdoc · try</title>
+<meta name="description" content="Drop a PDF. See it become a typed, queryable .tdoc — in your browser, no signup.">
+<meta property="og:title" content="tdoc · try">
+<meta property="og:description" content="Drop a PDF. See typed AXON output. No signup.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://tdoc.xyz/try">
+<meta name="twitter:card" content="summary">
+<meta name="theme-color" content="#fafaf7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141310" media="(prefers-color-scheme: dark)">
+
+<script src="./theme.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=JetBrains+Mono:ital,wght@0,400..600;1,400..600&display=swap">
+
+<style>
+:root{
+  --serif: "Newsreader", "Iowan Old Style", Baskerville, Georgia, serif;
+  --mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --col-max: 1180px;
+  --gutter: clamp(1.5rem, 4vw, 4rem);
+}
+:root, [data-theme="light"]{
+  --paper: #fafaf7; --paper-2: #f2eee4;
+  --ink: #0c0c0c; --ink-2: #2b2a27; --ink-3: #55524d; --ink-4: #8a8680;
+  --rule: #c8c3b7; --rule-soft: #e6e1d4;
+  --oxblood: #7a0c1a; --oxblood-wash: #7a0c1a10;
+}
+[data-theme="dark"]{
+  --paper: #141310; --paper-2: #1c1a15;
+  --ink: #efe9d9; --ink-2: #c6c0b1; --ink-3: #8a8577; --ink-4: #5a574f;
+  --rule: #2c2a24; --rule-soft: #221f1a;
+  --oxblood: #d85565; --oxblood-wash: #d8556518;
+}
+*, *::before, *::after { box-sizing: border-box; min-width: 0; }
+html { -webkit-text-size-adjust: 100%; overflow-x: hidden; }
+body{
+  margin:0; background: var(--paper); color: var(--ink);
+  font-family: var(--serif); font-size: clamp(1rem, 0.9rem + 0.45vw, 1.15rem);
+  line-height: 1.5; font-variation-settings: "opsz" 17;
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  overflow-wrap: break-word;
+}
+a{ color: var(--ink); text-decoration-thickness: 1px; text-underline-offset: 3px; text-decoration-color: var(--rule); }
+a:hover{ color: var(--oxblood); text-decoration-color: var(--oxblood); }
+::selection{ background: var(--oxblood); color: var(--paper); }
+
+.column{ max-width: var(--col-max); margin: 0 auto; padding: 0 var(--gutter); }
+
+/* Masthead — mirrors index.html but simplified (no mobile drawer here) */
+.masthead{ border-bottom: 1px solid var(--rule); padding: 1.4rem 0; }
+.masthead__grid{ display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+.masthead__title{ font-family: var(--serif); font-style: italic; font-weight: 500; font-size: 1.4rem; margin: 0; letter-spacing: -0.01em; }
+.masthead__title a{ text-decoration: none; }
+.masthead__title em{ font-style: italic; color: var(--oxblood); }
+.masthead__meta{ font-family: var(--mono); font-size: 0.78rem; color: var(--ink-3); letter-spacing: 0.04em; text-transform: uppercase; }
+.masthead__meta a{ color: var(--ink-3); text-decoration: none; }
+.masthead__meta a:hover{ color: var(--oxblood); text-decoration: underline; }
+.theme-toggle button{ background: none; border: 0; font: inherit; color: inherit; cursor: pointer; padding: 0; letter-spacing: inherit; text-transform: inherit; }
+.theme-toggle button[aria-pressed="true"]{ color: var(--oxblood); }
+.theme-toggle .sep{ margin: 0 0.4em; color: var(--ink-4); }
+
+/* Hero */
+.try-hero{ padding: clamp(3rem, 8vw, 6rem) 0 clamp(2rem, 5vw, 3.5rem); }
+.try-hero h1{ font-family: var(--serif); font-weight: 400; font-size: clamp(2.4rem, 1.8rem + 3vw, 4.2rem); line-height: 1.05; letter-spacing: -0.02em; margin: 0 0 1.2rem; font-variation-settings: "opsz" 60; }
+.try-hero h1 em{ font-style: italic; color: var(--oxblood); }
+.try-hero p{ max-width: 38rem; color: var(--ink-2); font-size: 1.1rem; margin: 0; }
+
+/* Section heading — small caps, mono */
+.eyebrow{ font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 0.8rem; }
+
+/* Drop zone */
+.drop{
+  margin: 0 0 2rem;
+  border: 1px dashed var(--rule);
+  background: var(--paper-2);
+  padding: clamp(2rem, 5vw, 3.5rem) 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+.drop:hover, .drop[data-drag="true"]{ border-color: var(--oxblood); background: var(--oxblood-wash); }
+.drop:focus-visible{ outline: 2px solid var(--oxblood); outline-offset: 2px; }
+.drop__title{ font-family: var(--serif); font-style: italic; font-size: 1.4rem; margin: 0 0 0.4rem; }
+.drop__hint{ font-family: var(--mono); font-size: 0.78rem; color: var(--ink-3); letter-spacing: 0.04em; margin: 0; }
+.drop input[type=file]{ position: absolute; left: -9999px; }
+
+/* Status line */
+.status{
+  font-family: var(--mono); font-size: 0.85rem; color: var(--ink-3);
+  margin: 0 0 1.5rem; min-height: 1.4em;
+}
+.status[data-state="error"]{ color: var(--oxblood); }
+.status[data-state="ok"]{ color: var(--ink-2); }
+
+/* Result panels */
+.results{ display: none; }
+.results[data-shown="true"]{ display: block; }
+
+.kv{ display: grid; grid-template-columns: 9rem 1fr; gap: 0.4rem 1.4rem; margin: 0 0 1.6rem; font-family: var(--mono); font-size: 0.82rem; }
+.kv dt{ color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.08em; }
+.kv dd{ margin: 0; color: var(--ink-2); overflow-wrap: anywhere; }
+.kv dd em{ color: var(--oxblood); font-style: italic; font-family: var(--serif); }
+
+/* AXC code panel */
+.axc-wrap{ position: relative; border: 1px solid var(--rule); background: var(--paper-2); }
+.axc-toolbar{ display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.9rem; border-bottom: 1px solid var(--rule); font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.axc-toolbar button{ background: none; border: 1px solid var(--rule); padding: 0.3rem 0.6rem; font: inherit; color: var(--ink-2); cursor: pointer; letter-spacing: inherit; text-transform: inherit; }
+.axc-toolbar button:hover{ color: var(--oxblood); border-color: var(--oxblood); }
+.axc-toolbar button:focus-visible{ outline: 2px solid var(--oxblood); outline-offset: 2px; }
+
+pre.axc{
+  margin: 0; padding: 1.1rem 1.2rem; overflow-x: auto;
+  font-family: var(--mono); font-size: 0.82rem; line-height: 1.55;
+  color: var(--ink-2);
+  max-height: 60vh;
+}
+pre.axc .tag{ color: var(--oxblood); }
+pre.axc .attr{ color: var(--ink-3); }
+pre.axc .typed{ background: var(--oxblood-wash); border-bottom: 1px solid var(--oxblood); }
+
+/* Warnings */
+.warnings{ margin: 1.4rem 0 0; font-family: var(--mono); font-size: 0.82rem; color: var(--ink-3); }
+.warnings ul{ margin: 0.4rem 0 0; padding-left: 1.2rem; }
+
+/* Spinner — pure CSS */
+.spinner{ display: inline-block; width: 0.8em; height: 0.8em; border: 1.5px solid var(--rule); border-top-color: var(--oxblood); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: -0.05em; margin-right: 0.4em; }
+@keyframes spin{ to { transform: rotate(360deg); } }
+
+/* Footer */
+.colophon{ margin-top: clamp(3rem, 8vw, 6rem); padding: 2rem 0; border-top: 1px solid var(--rule); font-family: var(--mono); font-size: 0.78rem; color: var(--ink-3); text-align: center; }
+.colophon a{ color: var(--ink-3); }
+
+@media (max-width: 640px){
+  .kv{ grid-template-columns: 1fr; gap: 0.1rem 0; }
+  .kv dt{ margin-top: 0.6rem; }
+}
+</style>
+</head>
+
+<body>
+
+<header class="masthead">
+  <div class="column masthead__grid">
+    <h1 class="masthead__title"><a href="/">tdoc<em>.</em></a></h1>
+    <div class="masthead__meta">
+      <a href="/">Home</a> · <a href="/#format">Format</a> · <a href="/#rates">Rates</a> · <a href="https://github.com/LuciferMors/tdoc" rel="noopener">Source</a>
+      &nbsp;&nbsp;
+      <span class="theme-toggle" role="group" aria-label="Theme">
+        <button type="button" data-theme-set="light" aria-pressed="true">Day</button><span class="sep" aria-hidden="true">·</span><button type="button" data-theme-set="dark" aria-pressed="false">Night</button>
+      </span>
+    </div>
+  </div>
+</header>
+
+<main class="column">
+
+<section class="try-hero">
+  <p class="eyebrow">Live demo · no signup · 5 MiB limit</p>
+  <h1>Drop a file. <em>See it typed.</em></h1>
+  <p>Your document goes to <code>api.tdoc.xyz/v1/try-public</code>, comes back as an AXON tree with declared types on every cell. Nothing is stored. Files leave your browser only over TLS.</p>
+</section>
+
+<section>
+  <label class="drop" id="drop" tabindex="0" aria-label="Upload a document">
+    <p class="drop__title">Drop a <em>.pdf</em>, <em>.axc</em>, <em>.txt</em>, or <em>.md</em> here</p>
+    <p class="drop__hint">— or click to choose a file —</p>
+    <input type="file" id="file" accept=".pdf,.axc,.txt,.md,application/pdf,text/plain,text/markdown">
+  </label>
+
+  <p class="status" id="status" data-state="idle"></p>
+
+  <div class="results" id="results" data-shown="false">
+    <p class="eyebrow">Result</p>
+    <dl class="kv">
+      <dt>Document ID</dt><dd id="r-doc-id">—</dd>
+      <dt>Content hash</dt><dd id="r-content-hash">—</dd>
+      <dt>Render hash</dt><dd id="r-render-hash">—</dd>
+      <dt>Nodes</dt><dd id="r-nodes">—</dd>
+    </dl>
+
+    <div class="axc-wrap">
+      <div class="axc-toolbar">
+        <span>AXON content notation (.axc)</span>
+        <span>
+          <button type="button" id="copy-btn">Copy</button>
+          <button type="button" id="download-btn">Download .axc</button>
+        </span>
+      </div>
+      <pre class="axc" id="r-axc"></pre>
+    </div>
+
+    <div class="warnings" id="r-warnings" hidden>
+      <strong>Validator warnings:</strong>
+      <ul id="r-warnings-list"></ul>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="colophon">
+  <div class="column">
+    <p>tdoc · <a href="/">home</a> · <a href="https://github.com/LuciferMors/tdoc" rel="noopener">github</a> · <a href="mailto:hello@tdoc.xyz">hello@tdoc.xyz</a></p>
+  </div>
+</footer>
+
+<script src="./try.js"></script>
+
+</body>
+</html>

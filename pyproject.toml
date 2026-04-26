@@ -59,6 +59,6 @@ Specification = "https://github.com/LuciferMors/tdoc/blob/main/AXON_Format_Speci
 py-modules = ["axon"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "product/tests"]
 python_files = ["test_*.py"]
 addopts = "-ra -q"

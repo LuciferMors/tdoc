@@ -346,6 +346,68 @@ async def structure(
     )
 
 
+# Public, unauthenticated demo endpoint. Powers the /try page on tdoc.xyz so a
+# visitor can drop a small file and see typed AXON output without signing up.
+# Tighter caps than /v1/structure (5 MiB, no signing/storage). IP rate-limit
+# inherited from RateLimitMiddleware (5 rps, 30 burst per IP).
+_TRY_MAX_BYTES = 5 * 1024 * 1024
+
+
+@app.post("/v1/try-public", response_model=StructureResponse)
+async def try_public(
+    file: UploadFile = File(...),
+    title: str = Form("Demo"),
+    document_type: str = Form("article.research"),
+) -> StructureResponse:
+    blob = await file.read()
+    if len(blob) > _TRY_MAX_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail="Demo limit is 5 MiB. Sign up for the full 32 MiB limit.",
+        )
+
+    suffix = (file.filename or "").lower()
+    try:
+        if suffix.endswith(".pdf"):
+            with tempfile.NamedTemporaryFile(
+                prefix="axon_try_", suffix=".pdf", delete=False
+            ) as tf:
+                tf.write(blob)
+                tmp = tf.name
+            try:
+                doc = convert_pdf(tmp, title=title, document_type=document_type)
+            finally:
+                try:
+                    os.remove(tmp)
+                except OSError:
+                    pass
+        elif suffix.endswith((".axc", ".txt", ".md")):
+            doc = convert_axc_string(
+                blob.decode("utf-8", errors="replace"),
+                title=title,
+                document_type=document_type,
+            )
+        else:
+            raise HTTPException(
+                status_code=415,
+                detail=f"Unsupported file type: {suffix!r}. Use .pdf / .axc / .txt / .md",
+            )
+    except AxonSecurityError as e:
+        raise HTTPException(status_code=400, detail=f"Unsafe input: {e}")
+
+    axc = serialize_axc(doc.content)
+    node_count = _count_nodes(doc.content)
+    result = validate(doc)
+    return StructureResponse(
+        document_id=doc.manifest.document_id,
+        content_hash=doc.manifest.content_hash or "",
+        render_hash=doc.manifest.render_hash or "",
+        axc=axc,
+        nodes=node_count,
+        warnings=result.warnings,
+    )
+
+
 @app.post("/v1/query", response_model=QueryResponse)
 def query(
     req: QueryRequest, authorization: Optional[str] = Header(default=None)
