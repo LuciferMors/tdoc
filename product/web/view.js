@@ -283,7 +283,7 @@
     const a = document.createElement("a");
     a.href = url;
     a.download =
-      (lastSourceName.replace(/\.[^.]+$/, "") || "document") + ".pdf";
+      (lastSourceName.replace(/\.[^.]+$/, "") || "document") + ".tdoc";
     document.body.appendChild(a);
     a.click();
     a.remove();

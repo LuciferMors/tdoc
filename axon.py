@@ -2231,6 +2231,193 @@ def convert_axc_string(
     return AxonDocument(manifest=manifest, content=content, render=render)
 
 
+_INLINE_BRACKETED = re.compile(r'\[data-type="[^"]*"\](.*?)\[/data-type\]', re.DOTALL)
+_INLINE_ANGLE = re.compile(r"<<(\w+)(?:\s+[^>]*)?>>(.+?)<</\1>>", re.DOTALL)
+
+
+def _pdf_strip_inline(text: str) -> str:
+    """Remove AXON inline-span markup from text so the PDF reads cleanly.
+
+    Both the angle-bracket form (<<type attrs>>content<</type>>) and the
+    square-bracket form ([data-type="x"]content[/data-type]) used in
+    examples are stripped to their content. AI tooling reads the typed
+    layer from the embedded axon-content.axc; the PDF text is for humans.
+    """
+    if not text:
+        return ""
+    text = _INLINE_BRACKETED.sub(lambda m: m.group(1), text)
+    text = _INLINE_ANGLE.sub(lambda m: m.group(2), text)
+    return text
+
+
+def _pdf_collect_blocks(node: "Node") -> List[Tuple[str, dict]]:
+    """Walk an AXON tree and emit a flat list of (kind, fields) blocks
+    that the PDF renderer can lay out top-to-bottom. Decoupling the walk
+    from the page layout makes pagination trivial."""
+    out: List[Tuple[str, dict]] = []
+
+    def emit(kind: str, **fields: object) -> None:
+        out.append((kind, fields))
+
+    def walk(n: "Node") -> None:
+        t = n.type
+        if t == "document":
+            for c in n.children:
+                walk(c)
+            return
+        if t == "section":
+            for c in n.children:
+                walk(c)
+            emit("space", h=8)
+            return
+        if t == "heading":
+            level = max(1, min(6, int(n.attributes.get("level", "2"))))
+            emit("heading", level=level, text=_pdf_strip_inline(n.text_content()))
+            return
+        if t == "paragraph":
+            buf = _pdf_strip_inline(n.text or "")
+            for c in n.children:
+                buf += _pdf_strip_inline(c.text_content())
+            emit("para", text=buf)
+            return
+        if t == "list":
+            ordered = n.attributes.get("ordered", "false") == "true"
+            for i, item in enumerate(n.children, 1):
+                if item.type != "item":
+                    continue
+                bullet = f"{i}." if ordered else "•"
+                emit("li", bullet=bullet, text=_pdf_strip_inline(item.text_content()))
+            emit("space", h=4)
+            return
+        if t == "finding":
+            kind = n.attributes.get("type", "secondary")
+            sig = n.attributes.get("significance", "")
+            valid = n.attributes.get("validated", "")
+            badge_bits = ["FINDING", kind.upper()]
+            if sig:
+                badge_bits.append(f"p={sig}")
+            if valid:
+                badge_bits.append(f"validated · {valid}")
+            emit("badge", text=" · ".join(badge_bits), accent=(kind == "primary"))
+            emit("para", text=_pdf_strip_inline(n.text_content()))
+            emit("space", h=4)
+            return
+        if t == "hypothesis":
+            hid = n.attributes.get("id", "")
+            status = n.attributes.get("status", "proposed")
+            label = "HYPOTHESIS"
+            if hid:
+                label += f" {hid}"
+            label += f" · {status.upper()}"
+            emit("badge", text=label, accent=(status == "supported"))
+            emit("para", text=_pdf_strip_inline(n.text_content()))
+            emit("space", h=4)
+            return
+        if t == "result":
+            metric = n.attributes.get("metric", "")
+            method = n.attributes.get("method", "")
+            label = "RESULT"
+            if metric:
+                label += f" · {metric}"
+            if method:
+                label += f" · {method}"
+            emit("badge", text=label, accent=False)
+            data_pairs = [
+                (k, v)
+                for k, v in sorted(n.attributes.items())
+                if k not in ("metric", "method", "id")
+            ]
+            if data_pairs:
+                emit("kv", pairs=data_pairs)
+            txt = _pdf_strip_inline(n.text_content())
+            if txt.strip():
+                emit("para", text=txt)
+            emit("space", h=4)
+            return
+        if t == "metric":
+            name = n.attributes.get("name", "")
+            value = n.attributes.get("value", n.text or "")
+            unit = n.attributes.get("unit", "")
+            group = n.attributes.get("group", "")
+            label = f"{name}: {value}"
+            if unit:
+                label += f" {unit}"
+            if group:
+                label += f" ({group})"
+            emit("para", text=label)
+            return
+        if t == "narrative":
+            role = n.attributes.get("role", "general").replace("_", " ").upper()
+            emit("badge", text=role, accent=False)
+            emit("para", text=_pdf_strip_inline(n.text_content()))
+            emit("space", h=4)
+            return
+        if t == "code_ref":
+            repo = n.attributes.get("repo", "")
+            script = n.attributes.get("script", "")
+            commit = n.attributes.get("commit", "")
+            repro = n.attributes.get("reproducible", "")
+            line = f"code · {repo}"
+            if script:
+                line += f" / {script}"
+            if commit:
+                line += f" @{commit[:8]}"
+            if repro and repro.lower() not in ("false", "0", "no"):
+                line += " · reproducible"
+            emit("mono", text=line)
+            return
+        if t == "link":
+            src = n.attributes.get("from", "?")
+            dst = n.attributes.get("to", "?")
+            kind = n.attributes.get("type", "related").replace("_", " ")
+            emit("mono", text=f"{src} — {kind} — {dst}")
+            return
+        if t == "view":
+            return  # @view is metadata only, not rendered visually
+        if t == "blockquote":
+            emit("para", text="“" + _pdf_strip_inline(n.text_content()) + "”")
+            return
+        if t == "callout":
+            emit("badge", text="NOTE", accent=True)
+            emit("para", text=_pdf_strip_inline(n.text_content()))
+            emit("space", h=4)
+            return
+        if t == "code":
+            emit("mono", text=n.text_content())
+            return
+        if t == "table":
+            cells = []
+            for child in n.children:
+                if child.type in ("thead", "tbody"):
+                    for row in child.children:
+                        if row.type == "row":
+                            cells.append(
+                                [
+                                    c.text_content()
+                                    for c in row.children
+                                    if c.type == "cell"
+                                ]
+                            )
+            if cells:
+                emit("table", rows=cells)
+            return
+        if t == "figure":
+            cap = n.find_one("caption")
+            label = "Figure"
+            fid = n.attributes.get("id", "")
+            if fid:
+                label += f" {fid}"
+            if cap:
+                emit("para", text=label + ". " + _pdf_strip_inline(cap.text_content()))
+            return
+        # Fallback: descend into children (preserves any unknown wrapper)
+        for c in n.children:
+            walk(c)
+
+    walk(node)
+    return out
+
+
 def encode_pdf_with_axon(doc: AxonDocument) -> bytes:
     """Render an AxonDocument as a PDF *with the AXON tree embedded inside*.
 
@@ -2244,12 +2431,13 @@ def encode_pdf_with_axon(doc: AxonDocument) -> bytes:
       axon-manifest.json     — manifest dict, JSON
       axon-content.axc       — canonical .axc serialization
       axon-render.axr        — render profile, .axr text (when present)
-      axon-signature.json    — hash-integrity record (Ed25519 if cryptography is available)
-      axon-spec-pointer.txt  — one-liner pointing to the AXON spec URL
+      axon-signature.json    — hash-integrity record
+      axon-spec-pointer.txt  — pointer to the AXON spec URL
 
-    Output is a single byte-string; callers write it to disk or return it
-    over HTTP. The .pdf file IS the .tdoc archive — same data, different
-    container, universally compatible.
+    Rendering uses PyMuPDF Page.insert_textbox with the standard PDF base-14
+    fonts (Helvetica, Times-Roman, Courier). These are guaranteed present in
+    every PDF viewer ever built — no font-embedding gymnastics, no CSS-into-
+    PDF translation, no surprise blank pages.
     """
     try:
         import pymupdf as fitz  # type: ignore[import-not-found]
@@ -2258,7 +2446,7 @@ def encode_pdf_with_axon(doc: AxonDocument) -> bytes:
             "encode_pdf_with_axon needs PyMuPDF — add 'PyMuPDF>=1.23' to requirements."
         ) from e
 
-    # 1. Build the canonical AXON artifacts that will be embedded.
+    # 1. Canonical AXON artifacts to embed.
     content_axc = serialize_axc(doc.content)
     render_axr = serialize_axr(doc.render)
     content_hash, render_hash = compute_document_hashes(content_axc, render_axr)
@@ -2267,37 +2455,169 @@ def encode_pdf_with_axon(doc: AxonDocument) -> bytes:
     manifest_dict = doc.manifest.to_dict()
     signature = sign_document(content_axc, render_axr, manifest_dict)
 
-    # 2. Render the document HTML and lay it out into PDF pages via Story.
-    html = render_html(doc)
-    buf = io.BytesIO()
-    writer = fitz.DocumentWriter(buf)
+    # 2. Walk the tree → list of layout blocks.
+    blocks = _pdf_collect_blocks(doc.content)
+
+    # 3. Layout pass — A4 pages, 22 mm margins, Times body, Helvetica heads.
+    pdf = fitz.open()
     A4 = fitz.paper_rect("A4")
-    margin = 56  # ~20 mm — matches the @page margin in the print stylesheet
-    where = fitz.Rect(margin, margin, A4.width - margin, A4.height - margin)
-    story = fitz.Story(html=html)
-    more = 1
-    pages = 0
-    # Cap at 200 pages — defence in depth against pathological inputs.
-    while more and pages < 200:
-        dev = writer.begin_page(A4)
-        more, _filled = story.place(where)
-        story.draw(dev, fitz.Identity)
-        writer.end_page()
-        pages += 1
-    writer.close()
+    margin = 62  # ~22 mm
+    page_w, page_h = A4.width, A4.height
+    text_w = page_w - 2 * margin
+    accent = (122 / 255.0, 12 / 255.0, 26 / 255.0)  # oxblood
+    ink = (0.06, 0.06, 0.05)
+    ink_2 = (0.18, 0.17, 0.15)
+    ink_3 = (0.36, 0.34, 0.30)
 
-    # 3. Re-open the PDF to attach embedded files + write XMP metadata.
-    pdf = fitz.open(stream=buf.getvalue(), filetype="pdf")
+    page = pdf.new_page(width=page_w, height=page_h)
+    y = margin
 
+    def new_page() -> None:
+        nonlocal page, y
+        page = pdf.new_page(width=page_w, height=page_h)
+        y = margin
+
+    def remaining() -> float:
+        return page_h - margin - y
+
+    def lines_for(text: str, fontname: str, fontsize: float) -> int:
+        """Estimate how many wrapped lines `text` will need at this width."""
+        if not text:
+            return 0
+        # Conservative char-width estimate: ~0.5 em.
+        em = fontsize * 0.52
+        chars_per_line = max(10, int(text_w / em))
+        words, line, count = text.split(), 0, 1
+        for w in words:
+            if line + len(w) + 1 > chars_per_line:
+                count += 1
+                line = len(w) + 1
+            else:
+                line += len(w) + 1
+        return count
+
+    def put(
+        text: str,
+        fontname: str,
+        fontsize: float,
+        color,
+        *,
+        leading: float = 1.25,
+        x_offset: float = 0.0,
+        indent: float = 0.0,
+    ) -> None:
+        nonlocal y
+        if not text:
+            return
+        # Estimate height; if no room, page-break.
+        n_lines = max(1, lines_for(text, fontname, fontsize))
+        needed = n_lines * fontsize * leading + 4
+        if needed > remaining():
+            new_page()
+        rect = fitz.Rect(
+            margin + x_offset + indent, y, margin + text_w, page_h - margin
+        )
+        # insert_textbox returns a positive height used or a negative
+        # number if the box was too small. We've sized generously, so
+        # this should always fit; if it returns -1 we paginate and retry.
+        used = page.insert_textbox(
+            rect,
+            text,
+            fontname=fontname,
+            fontsize=fontsize,
+            color=color,
+            align=fitz.TEXT_ALIGN_LEFT,
+            lineheight=leading,
+        )
+        if used < 0:
+            new_page()
+            rect = fitz.Rect(
+                margin + x_offset + indent, y, margin + text_w, page_h - margin
+            )
+            page.insert_textbox(
+                rect,
+                text,
+                fontname=fontname,
+                fontsize=fontsize,
+                color=color,
+                align=fitz.TEXT_ALIGN_LEFT,
+                lineheight=leading,
+            )
+        # Advance y by the estimated needed height (avoids over/under).
+        y += needed
+
+    # 4. Document title (from manifest) at top of page 1.
+    title = (doc.manifest.title or "Untitled").strip()
+    if title:
+        put(title, "hebo", 20, ink, leading=1.15)
+        y += 6
+        if doc.manifest.document_type:
+            put(
+                doc.manifest.document_type.replace(".", " · "),
+                "helv",
+                8.5,
+                ink_3,
+                leading=1.2,
+            )
+            y += 4
+        # Hairline rule
+        page.draw_line((margin, y), (margin + text_w, y), color=ink_3, width=0.5)
+        y += 14
+
+    # 5. Walk the blocks.
+    for kind, fields in blocks:
+        if kind == "space":
+            y += float(fields.get("h", 6))
+            continue
+        if kind == "heading":
+            level = fields["level"]
+            text = fields.get("text", "")
+            sizes = {1: 16, 2: 13, 3: 11, 4: 10, 5: 10, 6: 10}
+            put(text, "hebo", sizes.get(level, 11), ink, leading=1.2)
+            y += 4
+            continue
+        if kind == "para":
+            put(fields.get("text", ""), "tiro", 10.5, ink_2, leading=1.35)
+            y += 4
+            continue
+        if kind == "li":
+            bullet = fields.get("bullet", "•")
+            text = fields.get("text", "")
+            put(f"{bullet}  {text}", "tiro", 10.5, ink_2, leading=1.35, indent=12)
+            continue
+        if kind == "badge":
+            text = fields.get("text", "")
+            color = accent if fields.get("accent") else ink_3
+            put(text, "hebo", 7.8, color, leading=1.1)
+            y += 1
+            continue
+        if kind == "kv":
+            pairs = fields.get("pairs", [])
+            for k, v in pairs:
+                put(f"{k:18s}  {v}", "cour", 9, ink_2, leading=1.3)
+            continue
+        if kind == "mono":
+            put(fields.get("text", ""), "cour", 9, ink_2, leading=1.3)
+            y += 4
+            continue
+        if kind == "table":
+            rows = fields.get("rows", [])
+            for row in rows:
+                line = "  ".join(str(c)[:30] for c in row)
+                put(line, "cour", 9, ink_2, leading=1.3)
+            y += 4
+            continue
+
+    # 6. PDF-level metadata (so file managers + Preview Inspector show it).
     pdf.set_metadata(
         {
-            "title": doc.manifest.title or "Untitled",
+            "title": title,
             "author": ", ".join(
                 a.get("name", "") for a in (doc.manifest.authors or []) if a.get("name")
             )
             or "",
             "subject": doc.manifest.document_type or "",
-            "keywords": "AXON, tdoc, structured-document, ai-readable",
+            "keywords": "tdoc, AXON, ai-readable, structured-document",
             "producer": "tdoc",
             "creator": "tdoc",
         }

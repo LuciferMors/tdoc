@@ -267,18 +267,25 @@
       setStatus("no PDF on this response — try again", "error");
       return;
     }
-    track("try_downloaded", { format: "pdf" });
+    track("try_downloaded", { format: "tdoc" });
     const bytes = b64ToBytes(lastData.pdf_b64);
+    // The bytes are a valid PDF — Content-Type says so. The .tdoc extension
+    // is the brand. Any PDF reader opens this file (Preview / Acrobat /
+    // browser); macOS first-time may need right-click → Open With → Preview.
     const blob = new Blob([bytes], { type: "application/pdf" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download =
-      (lastSourceName.replace(/\.[^.]+$/, "") || "document") + ".pdf";
+      (lastSourceName.replace(/\.[^.]+$/, "") || "document") + ".tdoc";
     document.body.appendChild(a);
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 0);
+    setStatus(
+      "saved " + a.download + " — open with any PDF reader",
+      "ok"
+    );
   });
 
   // Note: the legacy ZIP-archive download button was removed. A tdoc is now

@@ -403,8 +403,11 @@ async def structure(
                 blob.decode("utf-8"), title=title, document_type=document_type
             )
         elif suffix.endswith(".tdoc"):
-            # Round-trip a previously-downloaded archive: unzip + parse.
-            doc = parse_tdoc_archive(blob)
+            # New-format tdoc is a PDF with AXON embedded; legacy was a ZIP.
+            try:
+                doc = parse_pdf_with_axon(blob)
+            except AxonSecurityError:
+                doc = parse_tdoc_archive(blob)
         else:
             raise HTTPException(
                 status_code=415,
