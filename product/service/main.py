@@ -24,7 +24,9 @@ import sys
 import tempfile
 from typing import Optional
 
-from fastapi import FastAPI, Header, HTTPException, UploadFile, File, Form
+import json
+
+from fastapi import FastAPI, Header, HTTPException, Request, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict
 
@@ -51,8 +53,11 @@ from axon import (  # noqa: E402
 from product.service.billing import (  # noqa: E402
     Plan,
     PlanQuotaExceeded,
+    find_by_subscription_id,
     get_principal,
     record_units,
+    register,
+    update_tier,
 )
 from product.service.security import (  # noqa: E402
     AuditLogMiddleware,
@@ -64,6 +69,7 @@ from product.service.security import (  # noqa: E402
     constant_time_eq,
     take_key_token,
     unhandled_exception_handler,
+    verify_lemonsqueezy_signature,
 )
 
 # Optional: Sentry error monitoring. Activates only when SENTRY_DSN is set
@@ -511,6 +517,144 @@ def verify(
     except ImportError as e:
         raise HTTPException(status_code=501, detail=str(e))
     return VerifyResponse(valid=ok)
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# Lemon Squeezy webhook — auto-provision API keys on subscription_created,
+# re-tier on subscription_updated, downgrade to free on subscription_cancelled.
+#
+# LS reference: https://docs.lemonsqueezy.com/help/webhooks
+# Signature:    HMAC-SHA256(body, signing_secret) → hex → header X-Signature
+#
+# Configuration (HF Space secrets):
+#   LEMONSQUEEZY_WEBHOOK_SECRET  — the signing secret you copy from LS dashboard.
+#   LS_VARIANT_MAP               — JSON like {"123":"pro","124":"team","125":"scale"}
+#                                  mapping LS variant_id → tdoc tier name.
+#
+# Endpoint: POST /v1/webhooks/lemonsqueezy
+#
+# Idempotency: LS retries on non-2xx. We always return 2xx for verified
+# requests so retries don't pile up; failures-after-verification are logged
+# and surfaced via Sentry, not via 5xx.
+# ────────────────────────────────────────────────────────────────────────────
+
+
+def _ls_variant_to_tier(variant_id: str) -> str | None:
+    """Look up the tdoc tier for a LS variant id, returning None if unmapped.
+
+    Reads the LS_VARIANT_MAP env var (JSON) on every call so an operator can
+    add a tier without restarting the Space — env updates DO trigger a
+    Space rebuild on HF, but local dev should pick up changes immediately.
+    """
+    raw = os.environ.get("LS_VARIANT_MAP", "")
+    if not raw:
+        return None
+    try:
+        import json as _json
+
+        m = _json.loads(raw)
+    except ValueError:
+        return None
+    if not isinstance(m, dict):
+        return None
+    return m.get(str(variant_id))
+
+
+@app.post("/v1/webhooks/lemonsqueezy")
+async def lemonsqueezy_webhook(request: Request) -> dict:
+    secret = os.environ.get("LEMONSQUEEZY_WEBHOOK_SECRET", "")
+    if not secret:
+        # Refuse to process unsigned webhooks rather than silently dropping
+        # them — operator error should surface, not hide.
+        raise HTTPException(
+            status_code=503,
+            detail="Webhook handler not configured (LEMONSQUEEZY_WEBHOOK_SECRET unset)",
+        )
+
+    body = await request.body()
+    sig = request.headers.get("x-signature", "")
+    if not verify_lemonsqueezy_signature(secret, body, sig):
+        raise HTTPException(status_code=401, detail="Invalid signature")
+
+    try:
+        import json as _json
+
+        payload = _json.loads(body.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        raise HTTPException(status_code=400, detail="Malformed JSON body")
+
+    meta = payload.get("meta", {})
+    event = meta.get("event_name", "")
+    data = payload.get("data", {})
+    attrs = data.get("attributes", {})
+    sub_id = str(data.get("id", "")) or None
+    variant_id = str(attrs.get("variant_id", "")) or None
+    customer_id = str(attrs.get("customer_id", "")) or None
+    user_email = attrs.get("user_email") or ""
+
+    rid = getattr(request.state, "request_id", "")
+
+    if event == "subscription_created":
+        if not sub_id or not variant_id:
+            raise HTTPException(
+                status_code=400, detail="Missing subscription/variant id"
+            )
+        tier = _ls_variant_to_tier(variant_id) or "pro"
+        # If the variant map isn't configured yet we still create the key
+        # at "pro" tier — far better than refusing the customer's purchase.
+        # Operator gets a log line to fix the mapping.
+        plan = register(
+            tier,
+            lemonsqueezy_customer_id=customer_id,
+            lemonsqueezy_subscription_id=sub_id,
+        )
+        # Log the prefix only — never the full key.
+        from product.service.security import logger as _seclog
+
+        _seclog.info(
+            json.dumps(
+                {
+                    "rid": rid,
+                    "ls_event": event,
+                    "tier": tier,
+                    "sub_id": sub_id,
+                    "key_prefix": plan.api_key[:8] + "…",
+                    "user_email_domain": user_email.split("@", 1)[-1]
+                    if "@" in user_email
+                    else "",
+                }
+            )
+        )
+        return {"ok": True, "event": event, "key_prefix": plan.api_key[:8] + "…"}
+
+    if event == "subscription_updated":
+        if not sub_id:
+            raise HTTPException(status_code=400, detail="Missing subscription id")
+        plan = find_by_subscription_id(sub_id)
+        if plan is None:
+            # First time we see this subscription — treat as create.
+            tier = _ls_variant_to_tier(variant_id or "") or "pro"
+            plan = register(
+                tier,
+                lemonsqueezy_customer_id=customer_id,
+                lemonsqueezy_subscription_id=sub_id,
+            )
+            return {"ok": True, "event": event, "action": "created"}
+        new_tier = _ls_variant_to_tier(variant_id or "") or plan.tier
+        if new_tier != plan.tier:
+            update_tier(plan, new_tier)
+        return {"ok": True, "event": event, "tier": new_tier}
+
+    if event in ("subscription_cancelled", "subscription_expired"):
+        if not sub_id:
+            raise HTTPException(status_code=400, detail="Missing subscription id")
+        plan = find_by_subscription_id(sub_id)
+        if plan is not None:
+            update_tier(plan, "free")
+        return {"ok": True, "event": event}
+
+    # Unknown event — accept (so LS doesn't retry forever) and no-op.
+    return {"ok": True, "event": event, "action": "ignored"}
 
 
 # Uvicorn entrypoint:  uvicorn product.service.main:app --reload --port 8000

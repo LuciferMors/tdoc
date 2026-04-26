@@ -24,6 +24,8 @@ Design choices + rationale (CyberTeam threat model):
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import logging
 import os
@@ -246,6 +248,26 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
 def constant_time_eq(a: str, b: str) -> bool:
     """Timing-attack-resistant comparison — used in auth paths."""
     return _secrets.compare_digest(a.encode("utf-8"), b.encode("utf-8"))
+
+
+def verify_lemonsqueezy_signature(secret: str, body: bytes, signature_hex: str) -> bool:
+    """Verify the X-Signature header on a Lemon Squeezy webhook.
+
+    LS signs the raw request body with HMAC-SHA256 using the per-store
+    signing secret you set in the LS dashboard. The header is the lowercase
+    hex digest. We compare in constant time so bad-signature attempts can't
+    be used as a timing oracle.
+
+    Returns False on any malformed input rather than raising — webhook
+    handlers want a clean boolean, not a try/except.
+    """
+    if not secret or not signature_hex:
+        return False
+    try:
+        expected = hmac.new(secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
+    except (TypeError, ValueError):
+        return False
+    return hmac.compare_digest(expected, signature_hex.strip())
 
 
 # ──────────────────────────────────────────────────────────────────────────

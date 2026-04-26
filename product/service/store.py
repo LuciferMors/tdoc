@@ -31,6 +31,7 @@ class Store(Protocol):
     def get(self, api_key: str) -> Optional[Plan]: ...
     def put(self, plan: Plan) -> None: ...
     def update(self, plan: Plan) -> None: ...
+    def find_by_subscription_id(self, sub_id: str) -> Optional[Plan]: ...
 
 
 class InMemoryStore:
@@ -52,6 +53,13 @@ class InMemoryStore:
         # Same object reference → already updated; lock is just for memory safety.
         with self._lock:
             self._d[plan.api_key] = plan
+
+    def find_by_subscription_id(self, sub_id: str) -> Optional[Plan]:
+        with self._lock:
+            for p in self._d.values():
+                if p.lemonsqueezy_subscription_id == sub_id:
+                    return p
+            return None
 
 
 _PG_DDL = """
@@ -185,6 +193,30 @@ class PostgresStore:
                         plan.api_key,
                     ),
                 )
+
+    def find_by_subscription_id(self, sub_id: str) -> Optional[Plan]:
+        self._migrate_once()
+        with self._pool.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT api_key, tier, units_included, units_used, "
+                    "overage_price_cents, lemonsqueezy_customer_id, "
+                    "lemonsqueezy_subscription_id "
+                    "FROM plans WHERE lemonsqueezy_subscription_id = %s",
+                    (sub_id,),
+                )
+                row = cur.fetchone()
+        if not row:
+            return None
+        return Plan(
+            api_key=row[0],
+            tier=row[1],
+            units_included=row[2],
+            units_used=row[3],
+            overage_price_cents=row[4],
+            lemonsqueezy_customer_id=row[5],
+            lemonsqueezy_subscription_id=row[6],
+        )
 
 
 _singleton: Optional[Store] = None

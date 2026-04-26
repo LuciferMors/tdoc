@@ -74,12 +74,39 @@ def get_principal(api_key: str) -> Plan | None:
     return get_store().get(api_key)
 
 
-def register(tier: str) -> Plan:
+def register(
+    tier: str,
+    *,
+    lemonsqueezy_customer_id: str | None = None,
+    lemonsqueezy_subscription_id: str | None = None,
+) -> Plan:
     """Provision a new API key on the given tier. Production: called by Lemon Squeezy webhook."""
     from product.service.store import get_store
 
     plan = make_plan(tier)
+    plan.lemonsqueezy_customer_id = lemonsqueezy_customer_id
+    plan.lemonsqueezy_subscription_id = lemonsqueezy_subscription_id
     get_store().put(plan)
+    return plan
+
+
+def find_by_subscription_id(sub_id: str) -> Plan | None:
+    """Webhook handlers use this to find the existing plan when LS sends
+    subscription_updated / subscription_cancelled events."""
+    from product.service.store import get_store
+
+    return get_store().find_by_subscription_id(sub_id)
+
+
+def update_tier(plan: Plan, tier: str) -> Plan:
+    """Re-tier a live plan. Used by subscription_updated handler."""
+    from product.service.store import get_store
+
+    spec = TIER_SPECS[tier]
+    plan.tier = tier
+    plan.units_included = spec["units_included"]
+    plan.overage_price_cents = spec["overage_price_cents"]
+    get_store().update(plan)
     return plan
 
 
