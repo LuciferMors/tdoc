@@ -263,6 +263,26 @@
 
   on("download-btn", () => {
     if (!lastData) return;
+    const stem = lastSourceName.replace(/\.[^.]+$/, "") || "document";
+
+    if (lastData.pdf_b64) {
+      const bin = atob(lastData.pdf_b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = stem + ".pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      track("try_downloaded", { format: "pdf" });
+      setStatus("saved " + a.download + " (PDF with AXON embedded)", "ok");
+      return;
+    }
+
     const text = lastData.axc_ai || lastData.axc || "";
     if (!text) {
       setStatus("nothing to download", "error");
@@ -273,8 +293,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download =
-      (lastSourceName.replace(/\.[^.]+$/, "") || "document") + ".axc";
+    a.download = stem + ".axc";
     document.body.appendChild(a);
     a.click();
     a.remove();

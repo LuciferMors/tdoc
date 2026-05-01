@@ -19,6 +19,7 @@ product/service/billing.py). Each endpoint that transforms content increments
 
 from __future__ import annotations
 
+import base64
 import os
 import sys
 import tempfile
@@ -39,6 +40,7 @@ from axon import (  # noqa: E402
     compute_document_hashes,
     convert_axc_string,
     convert_pdf,
+    encode_pdf_with_axon,
     execute_aql,
     parse_axc,
     parse_pdf_with_axon,
@@ -134,6 +136,7 @@ class StructureResponse(BaseModel):
     render_hash: str
     axc: str
     axc_ai: str = ""
+    pdf_b64: str = ""
     nodes: int
     warnings: list[str]
     html: str = ""
@@ -321,6 +324,13 @@ def _build_rich_response(doc) -> StructureResponse:
     html = render_html(doc)
     tree = doc.content.to_dict()
 
+    pdf_b64 = ""
+    try:
+        pdf_bytes = encode_pdf_with_axon(doc)
+        pdf_b64 = base64.b64encode(pdf_bytes).decode("ascii")
+    except Exception:
+        pass
+
     result = validate(doc)
     return StructureResponse(
         document_id=doc.manifest.document_id,
@@ -328,6 +338,7 @@ def _build_rich_response(doc) -> StructureResponse:
         render_hash=render_hash,
         axc=axc,
         axc_ai=axc_ai,
+        pdf_b64=pdf_b64,
         nodes=_count_nodes(doc.content),
         warnings=result.warnings,
         html=html,
