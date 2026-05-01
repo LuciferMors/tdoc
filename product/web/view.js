@@ -279,7 +279,7 @@
       setStatus("nothing to download", "error");
       return;
     }
-    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const blob = new Blob([text], { type: "application/octet-stream" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
