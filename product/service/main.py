@@ -40,7 +40,6 @@ from axon import (  # noqa: E402
     convert_axc_string,
     convert_pdf,
     encode_archive_to_bytes,
-    encode_pdf_with_axon,
     execute_aql,
     parse_axc,
     parse_pdf_with_axon,
@@ -48,6 +47,7 @@ from axon import (  # noqa: E402
     render_html,
     serialize_axc,
     serialize_axr,
+    serialize_for_ai,
     sign_document_ed25519,
     verify_document_ed25519,
     validate,
@@ -134,20 +134,12 @@ class StructureResponse(BaseModel):
     content_hash: str
     render_hash: str
     axc: str
+    axc_ai: str = ""
     nodes: int
     warnings: list[str]
-    # Demo-friendly extras: a rendered HTML preview, a clean JSON tree
-    # (every LLM tool can ingest this natively without a parser), and the
-    # actual .tdoc archive (signed deterministic ZIP) base64-encoded so
-    # callers can download the real product, not the raw .axc text.
     html: str = ""
     tree: dict = {}
     archive_b64: str = ""
-    # PDF-as-container: a real PDF that opens in any viewer, with the AXON
-    # tree embedded inside as PDF/A-3-style attachments. This is the
-    # universal-compatibility download — single file, looks like every
-    # other PDF, AI tools extract the structured data via PDF embedded files.
-    pdf_b64: str = ""
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -315,21 +307,19 @@ def _count_nodes(node) -> int:
 
 def _build_rich_response(doc) -> StructureResponse:
     """Common path for /v1/structure and /v1/try-public — packs the same
-    document into the five artifacts a buyer or agent might want:
+    document into the four artifacts a buyer or agent might want:
 
       - axc        : canonical text serialization (format-author view)
       - html       : rendered HTML preview (human view)
       - tree       : pure JSON tree (LLM view — no parser required)
       - archive_b64: base64 of the deterministic .tdoc ZIP (power-user view)
-      - pdf_b64    : base64 of the PDF-as-container (universal-compat view) —
-                     a real PDF that opens in any viewer, with the AXON tree
-                     embedded inside as PDF/A-3-style attachments.
 
     Plus the integrity hashes and validator warnings.
     """
     import base64
 
     axc = serialize_axc(doc.content)
+    axc_ai = serialize_for_ai(doc)
     axr = serialize_axr(doc.render)
     content_hash, render_hash = compute_document_hashes(axc, axr)
     html = render_html(doc)
@@ -337,27 +327,18 @@ def _build_rich_response(doc) -> StructureResponse:
     archive_bytes = encode_archive_to_bytes(doc)
     archive_b64 = base64.b64encode(archive_bytes).decode("ascii")
 
-    # PDF generation can fail if PyMuPDF Story chokes on extreme HTML;
-    # don't kill the whole response just because the PDF builder errored.
-    pdf_b64 = ""
-    try:
-        pdf_bytes = encode_pdf_with_axon(doc)
-        pdf_b64 = base64.b64encode(pdf_bytes).decode("ascii")
-    except Exception:  # noqa: BLE001 — graceful degrade
-        pdf_b64 = ""
-
     result = validate(doc)
     return StructureResponse(
         document_id=doc.manifest.document_id,
         content_hash=content_hash,
         render_hash=render_hash,
         axc=axc,
+        axc_ai=axc_ai,
         nodes=_count_nodes(doc.content),
         warnings=result.warnings,
         html=html,
         tree=tree,
         archive_b64=archive_b64,
-        pdf_b64=pdf_b64,
     )
 
 

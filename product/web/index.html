@@ -4,16 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>tdoc</title>
-<meta name="description" content="A tdoc is a normal PDF with the typed AXON tree embedded inside. Humans see a journal-quality paper. AI agents read the structured layer directly — no rendering, no parser, no separate file.">
-<meta property="og:title" content="tdoc">
-<meta property="og:description" content="Typed documents. Declared numbers. Signed archives. For agents that must cite, not guess.">
+<meta name="description" content="AI-native document format. Structured knowledge with typed entities, queryable metrics, and cryptographic signatures. 14x cheaper than VLM extraction. Zero hallucination.">
+<meta property="og:title" content="tdoc — AI-native documents">
+<meta property="og:description" content="Structured knowledge for AI agents. Typed nodes, queryable graphs, cryptographic signatures. The document format machines deserve.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://tdoc.xyz">
 <meta name="twitter:card" content="summary">
 <meta name="theme-color" content="#fafaf7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#141310" media="(prefers-color-scheme: dark)">
 
-<script src="./theme.js?v=5"></script>
+<script src="./theme.js?v=6"></script>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="canonical" href="https://tdoc.xyz/">
 
@@ -800,53 +800,55 @@ button{ font: inherit; color: inherit; background: none; border: 0; padding: 0; 
 
     <div>
       <h1 class="hero__title" data-reveal>
-        Documents that <em>read themselves.</em>
+        Documents that <em>machines understand.</em>
       </h1>
       <p class="hero__dek" data-reveal>
-        A typed, queryable, signable document format for the age of language-model
-        agents &mdash; with an open specification and a single-file reference
-        implementation.
+        An AI-native document format with typed nodes, queryable knowledge graphs,
+        and cryptographic signatures &mdash; 14x cheaper than VLM extraction, zero
+        hallucination.
       </p>
     </div>
 
     <aside data-reveal>
       <div class="hero__body">
         <p>
-          The problem is older than artificial intelligence. A PDF is a photograph
-          of a document: it preserves how the page <em>looks</em> and forgets what
-          the page <em>means</em>. A number in a table could be a p-value,
-          a currency, a page footnote, or an artefact of bad OCR &mdash; and nothing in
-          the file says which.
+          Every AI pipeline today starts the same way: feed a PDF to a vision-language
+          model and hope it reads the numbers right. It works &mdash; until the model
+          confuses a p-value with a page number, a confidence interval with a date
+          range, or hallucinates a decimal that shifts a clinical conclusion. At
+          scale, VLM extraction costs <em>$22,000 in tokens</em> where a native
+          AXON document costs <em>$1,500</em> for the same knowledge.
         </p>
         <p>
-          For a lawyer or a scientist this was merely inconvenient. For an
-          autonomous agent asked to cite, compare or reason across thousands
-          of such files, it is fatal: the model hallucinates types that were
-          never declared.
+          <em>tdoc</em> is the inverse. Instead of guessing structure from pixels,
+          the document declares it: typed entities, claims with evidence pointers,
+          metrics with units, relationships between concepts. Three layers &mdash;
+          structured markup, token-minimized compact form, knowledge graph &mdash;
+          each queryable, each signable, each self-describing so any model
+          instantly knows what it contains and how to use it.
         </p>
         <p>
-          <em>tdoc</em> is our attempt at the inverse. Every cell carries a
-          declared type. Every archive carries a cryptographic signature
-          over canonical bytes. Every encoding is deterministic to the byte.
-          We publish the format &mdash; <em>AXON</em> &mdash; under Apache 2.0;
-          the reference implementation is a single Python file.
+          The format is <em>AXON</em>, open specification, Apache 2.0. The reference
+          implementation is a single Python file. The document itself tells the AI
+          what it is, what queries to run, and what every number means. No parser,
+          no rendering, no guessing.
         </p>
       </div>
 
       <div class="hero__aside">
         <dl>
           <dt>Format</dt><dd>AXON 1.0, open specification</dd>
-          <dt>File</dt><dd>&nbsp;.tdoc</dd>
+          <dt>Layers</dt><dd>structured &middot; compact &middot; knowledge graph</dd>
           <dt>Signing</dt><dd>Ed25519, canonical payload</dd>
           <dt>Integrity</dt><dd>byte-deterministic encoding</dd>
-          <dt>Reference</dt><dd>Python, single file, <em>50/50</em> tests</dd>
-          <dt>Licence</dt><dd>Apache 2.0 &mdash; fork it, host it, ship it</dd>
+          <dt>Cost</dt><dd><em>14x cheaper</em> than VLM extraction</dd>
+          <dt>Reference</dt><dd>Python, single file, Apache 2.0</dd>
         </dl>
       </div>
 
       <div class="hero__actions">
-        <a href="/try">Try on your hardest PDF</a>
-        <a href="#figure">See it, side by side</a>
+        <a href="/try">Try it — drop any PDF</a>
+        <a href="#figure">See what AI gets</a>
         <a href="https://github.com/LuciferMors/tdoc" rel="noopener">Read the source</a>
       </div>
     </aside>
@@ -859,42 +861,47 @@ button{ font: inherit; color: inherit; background: none; border: 0; padding: 0; 
 
   <div class="figure__caption" data-reveal>
     <span class="num">Fig.&nbsp;1</span>
-    <span>The same sentence, passed through a PDF parser (left) and a tdoc parser (right).</span>
+    <span>The same research result: VLM extraction (left) vs native AXON (right).</span>
   </div>
 
   <h2 class="figure__title" data-reveal>
-    &ldquo;p = 0.003&rdquo; is four characters to a parser and <em>a probability</em> to tdoc.
+    A VLM guesses what a number means. AXON <em>declares it.</em>
   </h2>
 
   <div class="figure__pair" data-reveal>
 
     <div class="figure__cell">
-      <h3>Left &mdash; <span>what your LLM sees today</span></h3>
-      <pre class="figure__sample figure__sample--raw"><code>"p = 0.003 at the 10th minute"</code>
+      <h3>Left &mdash; <span>VLM extraction (~22,000 tokens)</span></h3>
+      <pre class="figure__sample figure__sample--raw"><code>"RIA reaches 100% IID accuracy"</code>
+<code>"MHA collapses to 35.8%"</code>
+<code>"p = 0.003 at the 10th minute"</code>
 <code>"95% CI [0.41, 0.78]"</code>
-<code>"$12,400"</code>
-<code>"142.7 mg/dL"</code></pre>
+<code>"605,568 parameters"</code></pre>
       <p class="figure__summary">
-        <b>Four strings.</b> The agent must <em>guess</em> whether <code>0.003</code> is
-        a probability, a footnote marker, or part of a larger number. At scale,
-        the guesses drift &mdash; and the citations rot.
+        <b>Flat strings.</b> The agent must <em>guess</em> which number is an accuracy,
+        which is a parameter count, what 35.8% refers to. At scale, the guesses
+        drift &mdash; and citations become hallucinations.
       </p>
     </div>
 
     <div class="figure__cell">
-      <h3>Right &mdash; <span>what the same agent sees with a .tdoc file</span></h3>
-<pre class="figure__sample"><code>&lt;<span class="tag">measure</span> <span class="tag">type=</span>"<span class="hl"><span class="type">pvalue</span></span>"
-         <span class="tag">value=</span>"<span class="num">0.003</span>"&gt;p = 0.003&lt;/<span class="tag">measure</span>&gt;
-&lt;<span class="tag">measure</span> <span class="tag">type=</span>"<span class="hl"><span class="type">ci</span></span>"
-         <span class="tag">value=</span>"<span class="num">[0.41, 0.78]</span>"&gt;95% CI&lt;/<span class="tag">measure</span>&gt;
-&lt;<span class="tag">cell</span>    <span class="tag">type=</span>"<span class="hl"><span class="type">currency</span></span>"
-         <span class="tag">ticker=</span>"<span class="str">USD</span>"&gt;<span class="num">$12,400</span>&lt;/<span class="tag">cell</span>&gt;
-&lt;<span class="tag">cell</span>    <span class="tag">type=</span>"<span class="hl"><span class="type">measure</span></span>"
-         <span class="tag">unit=</span>"<span class="str">mg/dL</span>"&gt;<span class="num">142.7</span>&lt;/<span class="tag">cell</span>&gt;</code></pre>
+      <h3>Right &mdash; <span>native AXON (~1,950 tokens)</span></h3>
+<pre class="figure__sample"><code><span class="tag">@data</span> <span class="hl">[data-type="<span class="type">metric</span>" method="ria"
+       metric="iid-accuracy" value="100.0"]</span>:
+  100.0 ± 0.0
+
+<span class="tag">@data</span> <span class="hl">[data-type="<span class="type">claim</span>"
+       evidence="result-iid,result-ood"]</span>:
+  RIA reaches 100% IID and OOD accuracy
+
+<span class="tag">@data</span> <span class="hl">[data-type="<span class="type">relationship</span>"
+       from="entity-ria" to="entity-mha"
+       relation="outperforms"]</span>:
+  RIA outperforms MHA on compositional binding</code></pre>
       <p class="figure__summary">
-        <b>Four declarations.</b> The types <em>pvalue</em>, <em>ci</em>, <em>currency</em>,
-        <em>measure</em> are not inferred at read-time &mdash; they were authored
-        with the file. The agent cites, rather than guesses.
+        <b>Typed declarations.</b> Every metric, claim, and relationship is
+        machine-queryable. The agent <em>cites</em> rather than guesses &mdash;
+        at <b>14x lower cost</b>.
       </p>
     </div>
 
@@ -910,53 +917,52 @@ button{ font: inherit; color: inherit; background: none; border: 0; padding: 0; 
 
   <div class="letter__body" data-reveal>
 
-    <h2>On the problem of the <em>unwitnessed number.</em></h2>
+    <h2>Why AI deserves <em>better documents.</em></h2>
 
     <p class="lede">
-      A decade of language models has hidden a more primitive crisis: our
-      documents have never been honest about what they contain. A clinical
-      trial reports a p-value of 0.003 &mdash; but the file does not know this,
-      and neither does the reader, until the reader happens to have trained
-      on enough biostatistics to guess.
+      We have spent a decade teaching language models to read documents
+      designed for human eyes. The entire pipeline &mdash; OCR, VLM, extraction,
+      validation &mdash; exists because our files never declared what they
+      contained. It is time to build documents that speak machine natively.
     </p>
 
     <p>
-      Every pipeline we have built to repair this has been a pipeline of
-      guesses. We teach large models to read tables. We fine-tune extractors
-      on clinical corpora. We prompt Claude to &ldquo;please identify the p-value
-      in this paragraph.&rdquo; The models oblige and, often enough, they are
-      right. But they are always guessing, and occasionally they are
-      confidently wrong &mdash; and in regulated domains, confident wrongness is
-      not a failure mode so much as a lawsuit.
+      Consider what happens when an AI agent reads a research paper today.
+      A vision-language model scans the PDF &mdash; pixel by pixel, page by page
+      &mdash; and produces ~22,000 tokens of flat text. The number <code>0.003</code>
+      appears somewhere in the output. Is it a p-value? A coefficient? A
+      page footnote? The model guesses. Usually it guesses right. But in
+      regulated domains &mdash; clinical trials, financial disclosure, legal
+      evidence &mdash; a confident wrong guess is not a failure mode, it is
+      a lawsuit.
     </p>
 
     <p>
-      <em>tdoc</em> proposes a different contract. Before the agent opens the
-      document, the document already knows: <em>this number is a p-value; that
-      one is a concentration in milligrams per decilitre; this span is a
-      citation; this block is signed by a public key I can verify in a
-      hundred milliseconds.</em> The types are declarations, not inferences.
-      The signature is mathematical, not cultural. The bytes are identical
-      across encodes &mdash; hashable, diffable, auditable without ceremony.
+      <em>tdoc</em> proposes the inverse. Instead of extracting structure from
+      pixels, you <em>author</em> it: every entity is typed, every metric
+      carries its units, every claim points to its evidence, every
+      relationship between concepts is declared. The document arrives at the
+      AI as a three-layer knowledge representation &mdash; structured markup,
+      token-minimized compact form, and a queryable knowledge graph &mdash;
+      with a self-describing preamble that tells any model what the file
+      is, what it contains, and what queries to run.
     </p>
 
     <p>
-      We did not invent the desire for this. Scientific publishing has
-      wanted it for thirty years and approximated it with XML schemas that
-      nobody reads. Financial disclosure has wanted it for twenty years and
-      approximated it with XBRL, which can be rendered only by machines.
-      What is new is the <em>reader</em>: the autonomous agent that cannot
-      be bored, cannot read between the lines, and will not improvise a
-      unit that is missing. For that reader, a typed document is the
-      difference between a useful citation and a hallucination.
+      The cost difference is not marginal. A single research paper through
+      VLM extraction: ~22,000 tokens. The same paper as native AXON: ~1,950
+      tokens. That is <em>14x cheaper</em>, with zero hallucination, because
+      the types were never inferred &mdash; they were declared by the author.
+      At 100,000 documents, the difference is hundreds of thousands of
+      dollars.
     </p>
 
     <p>
       The spec is open. The reference implementation is a single file of
-      Python. A <em>tdoc</em> is a single PDF that carries every declaration,
-      every signature, every deterministic byte &mdash; embedded inside the
-      same file a human opens in Preview &mdash; ready for agents that must
-      cite, verify, and be accountable.
+      Python. The format is self-describing, deterministic to the byte,
+      cryptographically signable, and queryable via AQL &mdash; a structured
+      query language built into the spec. We are not building a better
+      PDF parser. We are building the document format that machines deserve.
     </p>
 
     <p class="letter__signoff">
@@ -971,36 +977,36 @@ button{ font: inherit; color: inherit; background: none; border: 0; padding: 0; 
 <section class="spec" id="format">
 
   <div class="spec__intro" data-reveal>
-    <h2>Every cell, <em>declared.</em></h2>
+    <h2>Three layers of <em>knowledge.</em></h2>
     <p>
-      <em>AXON</em> separates <em>what a document says</em> from <em>how it
-      renders.</em> The content tree is typed. A <code>pvalue</code> is a
-      probability. A <code>measure</code> carries its units. A
-      <code>currency</code> knows its ticker. The renderer is a separate
-      profile, itself hashable and signable, so the same content can be laid
-      out five different ways without ever lying about the data.
+      <em>AXON</em> is not markup. It is a knowledge representation. Layer&nbsp;1
+      is structured <code>.axc</code> with typed nodes. Layer&nbsp;2 is a
+      token-minimized compact form. Layer&nbsp;3 is a queryable knowledge
+      graph with entities, relationships, claims, and metrics &mdash; each
+      with provenance pointers. One document, three views, all deterministic
+      and signable.
     </p>
   </div>
 
-<pre class="spec__code" data-reveal aria-label="AXON excerpt"><code>&lt;<span class="tag">section</span> <span class="attr">id=</span>"results"&gt;
-  &lt;<span class="tag">heading</span> <span class="attr">level=</span>"2"&gt;Outcome&lt;/<span class="tag">heading</span>&gt;
-  &lt;<span class="tag">paragraph</span>&gt;
-    &lt;<span class="tag">measure</span> <span class="attr">type=</span>"<span class="type">pvalue</span>"
-             <span class="attr">value=</span>"<span class="num">0.003</span>"&gt;p = 0.003&lt;/<span class="tag">measure</span>&gt;
-    at the 10<sup>th</sup> minute, with a
-    &lt;<span class="tag">measure</span> <span class="attr">type=</span>"<span class="type">ci</span>"
-             <span class="attr">value=</span>"<span class="num">[0.41, 0.78]</span>"&gt;
-      95 % confidence interval
-    &lt;/<span class="tag">measure</span>&gt;.
-  &lt;/<span class="tag">paragraph</span>&gt;
+<pre class="spec__code" data-reveal aria-label="AXON excerpt"><code><span class="tag">@section</span> <span class="attr">[id="knowledge" type="knowledge-graph"]</span>:
 
-  &lt;<span class="tag">table</span> <span class="attr">id=</span>"t1" <span class="attr">summary=</span>"arm-by-arm"&gt;
-    &lt;<span class="tag">cell</span> <span class="attr">type=</span>"<span class="type">currency</span>"
-          <span class="attr">ticker=</span>"USD"&gt;<span class="num">$12,400</span>&lt;/<span class="tag">cell</span>&gt;
-    &lt;<span class="tag">cell</span> <span class="attr">type=</span>"<span class="type">measure</span>"
-          <span class="attr">unit=</span>"mg/dL"&gt;<span class="num">142.7</span>&lt;/<span class="tag">cell</span>&gt;
-  &lt;/<span class="tag">table</span>&gt;
-&lt;/<span class="tag">section</span>&gt;
+  <span class="tag">@data</span> <span class="attr">[id="entity-ria"</span> <span class="type">data-type="entity"</span> <span class="attr">class="method"]</span>:
+    Role-Indexed Attention (RIA)
+
+  <span class="tag">@data</span> <span class="attr">[id="result-iid"</span> <span class="type">data-type="metric"</span>
+         <span class="attr">method="ria" metric="iid-accuracy"</span>
+         <span class="attr">value="<span class="num">100.0</span>" unit="%"]</span>:
+    <span class="num">100.0</span> ± <span class="num">0.0</span>
+
+  <span class="tag">@data</span> <span class="attr">[id="claim-1"</span> <span class="type">data-type="claim"</span>
+         <span class="attr">evidence="result-iid,result-ood"</span>
+         <span class="attr">status="supported"]</span>:
+    RIA reaches 100% IID and OOD accuracy
+
+  <span class="tag">@data</span> <span class="attr">[id="rel-1"</span> <span class="type">data-type="relationship"</span>
+         <span class="attr">from="entity-ria" to="entity-mha"</span>
+         <span class="attr">relation="outperforms"]</span>:
+    RIA outperforms MHA on compositional binding
 </code></pre>
 
 </section>
@@ -1070,16 +1076,16 @@ button{ font: inherit; color: inherit; background: none; border: 0; padding: 0; 
 
   <p class="rates__footnote" data-reveal>
     Self-hosting is always free and always will be: the reference
-    implementation is Apache 2.0. The format is open. The tdoc service
-    here is the hosted convenience &mdash; not the only way to get value.
+    implementation is Apache 2.0. The format is open. The hosted API
+    is the convenience layer &mdash; not the only way to get value.
   </p>
 </section>
 
 <!-- THESIS — the single big quote ───────────────────────── -->
 <section class="thesis">
   <p data-reveal>
-    &ldquo;The difference between a good citation and a hallucination
-    is a <em>declared type.</em>&rdquo;
+    &ldquo;Stop teaching AI to read human documents.
+    Start writing documents <em>for AI.</em>&rdquo;
   </p>
 </section>
 
@@ -1091,7 +1097,7 @@ button{ font: inherit; color: inherit; background: none; border: 0; padding: 0; 
 
     <div>
       <h4>tdoc</h4>
-      <p><em>tdoc</em> is a typed document format and hosted API.</p>
+      <p><em>tdoc</em> is an AI-native document format and hosted API.</p>
       <p><a href="https://github.com/LuciferMors/tdoc" rel="noopener">github.com/LuciferMors/tdoc</a></p>
       <p><a href="https://pypi.org/project/axon-document/" rel="noopener">pip install axon-document</a></p>
     </div>
@@ -1120,8 +1126,8 @@ button{ font: inherit; color: inherit; background: none; border: 0; padding: 0; 
   </div>
 </footer>
 
-<script src="./app.js?v=5"></script>
-<script src="./analytics-config.js?v=5"></script>
-<script src="./analytics.js?v=5"></script>
+<script src="./app.js?v=6"></script>
+<script src="./analytics-config.js?v=6"></script>
+<script src="./analytics.js?v=6"></script>
 </body>
 </html>

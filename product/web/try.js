@@ -1,6 +1,6 @@
 // tdoc /try — public demo page.
 // Drag-drop or click → POST to api.tdoc.xyz/v1/try-public → render typed
-// document in three views (Preview / JSON / Raw .axc) + download tdoc PDF.
+// document in four views (AI-ready / Preview / JSON / Raw .axc) + download .tdoc.
 // CSP: script-src 'self', no eval, no inline. connect-src includes api.tdoc.xyz.
 
 (() => {
@@ -102,8 +102,8 @@
   }
 
   // ─── Tab switching ───────────────────────────────────────────
-  const TABS = ["preview", "json", "axc"];
-  let activeTab = "preview";
+  const TABS = ["ai", "preview", "json", "axc"];
+  let activeTab = "ai";
 
   function setTab(name) {
     if (!TABS.includes(name)) return;
@@ -212,6 +212,13 @@
     // Raw .axc
     $("r-axc").innerHTML = highlightAxc(data.axc || "");
 
+    // AI-ready (self-describing preamble + AXC)
+    const aiEl = $("r-ai");
+    if (aiEl) {
+      const aiText = data.axc_ai || data.axc || "";
+      aiEl.innerHTML = highlightAxc(aiText);
+    }
+
     // Warnings
     const warnEl = $("r-warnings");
     const list = $("r-warnings-list");
@@ -227,7 +234,7 @@
       warnEl.hidden = true;
     }
 
-    setTab("preview");
+    setTab("ai");
     results.dataset.shown = "true";
   }
 
@@ -245,7 +252,8 @@
   on("copy-btn", async () => {
     if (!lastData) return;
     let text = "";
-    if (activeTab === "axc")  text = lastData.axc || "";
+    if (activeTab === "ai")   text = lastData.axc_ai || lastData.axc || "";
+    else if (activeTab === "axc")  text = lastData.axc || "";
     else if (activeTab === "json") text = JSON.stringify(lastData.tree || {}, null, 2);
     else text = lastData.html || "";
     try {
@@ -260,19 +268,15 @@
     }
   });
 
-  // Primary download: a real PDF that opens in any viewer, with AXON
-  // embedded as PDF/A-3-style attachments. Single file, universal compat.
+  // Download tdoc archive (.tdoc ZIP). The PDF-as-container path was
+  // removed; the archive_b64 field carries the deterministic ZIP instead.
   on("download-pdf-btn", () => {
-    if (!lastData || !lastData.pdf_b64) {
-      setStatus("no PDF on this response — try again", "error");
+    if (!lastData || !lastData.archive_b64) {
+      setStatus("no archive on this response — try again", "error");
       return;
     }
     track("try_downloaded", { format: "tdoc" });
-    const bytes = b64ToBytes(lastData.pdf_b64);
-    // application/octet-stream — opaque MIME — so the browser respects the
-    // .tdoc filename exactly. With application/pdf, Safari/Chrome on macOS
-    // appends ".pdf" to the download name to "be helpful", producing
-    // foo.tdoc.pdf. The bytes ARE a valid PDF; any reader opens them.
+    const bytes = b64ToBytes(lastData.archive_b64);
     const blob = new Blob([bytes], { type: "application/octet-stream" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -283,15 +287,8 @@
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 0);
-    setStatus(
-      "saved " + a.download + " — open with any PDF reader (Preview / Acrobat / browser)",
-      "ok"
-    );
+    setStatus("saved " + a.download, "ok");
   });
-
-  // Note: the legacy ZIP-archive download button was removed. A tdoc is now
-  // a single PDF (with AXON embedded inside as PDF/A-3 attachments). Power
-  // users who want the raw ZIP can decode response.archive_b64 themselves.
 
   // ─── "Try with sample" — fetches /sample.axc and uploads it ─
   // Lets a visitor without a PDF in hand still see the demo work.

@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>tdoc · try</title>
-<meta name="description" content="Drop a PDF. See it become a typed, queryable .tdoc — in your browser, no signup.">
+<meta name="description" content="Drop a PDF. Get machine-native structured knowledge — queryable, signable, 14x cheaper than VLM. No signup.">
 <meta property="og:title" content="tdoc · try">
-<meta property="og:description" content="Drop a PDF. See typed AXON output. No signup.">
+<meta property="og:description" content="Drop a PDF. Get AI-native structured output. No signup.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://tdoc.xyz/try">
 <meta name="twitter:card" content="summary">
@@ -16,7 +16,7 @@
 <!-- ?v= is a cache-buster: bump this string when changing theme.js / try.js
      so users on a stale Cloudflare-cached copy fetch the new version
      instead of crashing on a renamed DOM id. -->
-<script src="./theme.js?v=5"></script>
+<script src="./theme.js?v=6"></script>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="canonical" href="https://tdoc.xyz/try">
 
@@ -122,7 +122,7 @@ a:hover{ color: var(--oxblood); text-decoration-color: var(--oxblood); }
 .kv dd{ margin: 0; color: var(--ink-2); overflow-wrap: anywhere; }
 .kv dd em{ color: var(--oxblood); font-style: italic; font-family: var(--serif); }
 
-/* Result panel + tabbed view (Preview / JSON / Raw .axc) */
+/* Result panel + tabbed view (AI-ready / Preview / JSON / Raw .axc) */
 .panel{ position: relative; border: 1px solid var(--rule); background: var(--paper-2); }
 .panel-toolbar{
   display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;
@@ -166,6 +166,15 @@ pre.axc, pre.json{
 pre.axc .tag{ color: var(--oxblood); }
 pre.axc .attr{ color: var(--ink-3); }
 pre.axc .typed{ background: var(--oxblood-wash); border-bottom: 1px solid var(--oxblood); }
+pre.ai{
+  margin: 0; padding: 1.1rem 1.2rem; overflow-x: auto;
+  font-family: var(--mono); font-size: 0.82rem; line-height: 1.55;
+  color: var(--ink-2); max-height: 60vh; white-space: pre-wrap; word-break: break-word;
+}
+pre.ai .preamble{ color: var(--ink-3); }
+pre.ai .tag{ color: var(--oxblood); }
+pre.ai .attr{ color: var(--ink-3); }
+pre.ai .typed{ background: var(--oxblood-wash); border-bottom: 1px solid var(--oxblood); }
 pre.json .key{ color: var(--oxblood); }
 pre.json .str{ color: var(--ink-2); }
 pre.json .num, pre.json .bool, pre.json .null{ color: var(--ink-3); }
@@ -208,8 +217,8 @@ pre.json .num, pre.json .bool, pre.json .null{ color: var(--ink-3); }
 
 <section class="try-hero">
   <p class="eyebrow">Live demo · no signup · 5 MiB limit</p>
-  <h1>Drop a file. <em>Get a tdoc.</em></h1>
-  <p>A <em>tdoc</em> is a single file with two faces. To <strong>humans</strong> it's a normal PDF that opens anywhere — Preview, Acrobat, every browser, every email client. To <strong>AI agents</strong> it's a typed AXON tree the model reads directly, no rendering, no parser. Same file. Saved with the <code>.pdf</code> extension. There is no zip and no folder. There is one file, and that file is your tdoc.</p>
+  <h1>Drop a PDF. <em>Get structured knowledge.</em></h1>
+  <p>Upload any document. <em>tdoc</em> converts it into an AI-native three-layer representation: structured markup, token-minimized compact form, and a knowledge graph with typed entities, claims, and metrics. Queryable. Signable. Self-describing — any model instantly knows what the file contains and how to use it. <strong>14x cheaper</strong> than VLM extraction, zero hallucination.</p>
 </section>
 
 <section>
@@ -238,9 +247,10 @@ pre.json .num, pre.json .bool, pre.json .null{ color: var(--ink-3); }
     <div class="panel">
       <div class="panel-toolbar">
         <div class="tabs" role="tablist" aria-label="Output format">
-          <button type="button" role="tab" aria-selected="true"  aria-controls="tab-preview" id="tab-btn-preview">Preview</button>
-          <button type="button" role="tab" aria-selected="false" aria-controls="tab-json"    id="tab-btn-json">JSON</button>
-          <button type="button" role="tab" aria-selected="false" aria-controls="tab-axc"     id="tab-btn-axc">Raw .axc</button>
+          <button type="button" role="tab" aria-selected="true"  aria-controls="tab-ai"      id="tab-btn-ai">AI-ready</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="tab-preview"  id="tab-btn-preview">Preview</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="tab-json"     id="tab-btn-json">JSON</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="tab-axc"      id="tab-btn-axc">Raw .axc</button>
         </div>
         <div class="panel-actions">
           <button type="button" id="copy-btn">Copy current</button>
@@ -248,9 +258,13 @@ pre.json .num, pre.json .bool, pre.json .null{ color: var(--ink-3); }
         </div>
       </div>
 
+      <div class="tab-panel" id="tab-ai" role="tabpanel" aria-labelledby="tab-btn-ai" data-active="true">
+        <pre class="ai" id="r-ai"></pre>
+      </div>
+
       <!-- Preview: sandboxed iframe — no scripts, no same-origin, no anything.
            User-uploaded content cannot escape this frame. -->
-      <div class="tab-panel" id="tab-preview" role="tabpanel" aria-labelledby="tab-btn-preview" data-active="true">
+      <div class="tab-panel" id="tab-preview" role="tabpanel" aria-labelledby="tab-btn-preview" data-active="false">
         <iframe class="preview" id="r-preview" sandbox="" title="Document preview"></iframe>
       </div>
 
@@ -278,9 +292,9 @@ pre.json .num, pre.json .bool, pre.json .null{ color: var(--ink-3); }
   </div>
 </footer>
 
-<script src="./try.js?v=5"></script>
-<script src="./analytics-config.js?v=5"></script>
-<script src="./analytics.js?v=5"></script>
+<script src="./try.js?v=6"></script>
+<script src="./analytics-config.js?v=6"></script>
+<script src="./analytics.js?v=6"></script>
 
 </body>
 </html>

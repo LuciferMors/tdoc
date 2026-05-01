@@ -269,17 +269,15 @@
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 
-  // Server-rendered PDF with AXON embedded — universal-compat download.
+  // Download tdoc archive (.tdoc ZIP). PDF-as-container path removed.
   function downloadPdf() {
-    if (!lastData || !lastData.pdf_b64) {
+    if (!lastData || !lastData.archive_b64) {
       setStatus("nothing to download yet — open a document first", "error");
       return;
     }
-    const bin = atob(lastData.pdf_b64);
+    const bin = atob(lastData.archive_b64);
     const bytes = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    // octet-stream MIME so browsers preserve the .tdoc filename verbatim
-    // instead of helpfully appending .pdf.
     const blob = new Blob([bytes], { type: "application/octet-stream" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
