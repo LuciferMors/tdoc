@@ -39,7 +39,6 @@ from axon import (  # noqa: E402
     compute_document_hashes,
     convert_axc_string,
     convert_pdf,
-    encode_archive_to_bytes,
     execute_aql,
     parse_axc,
     parse_pdf_with_axon,
@@ -139,7 +138,6 @@ class StructureResponse(BaseModel):
     warnings: list[str]
     html: str = ""
     tree: dict = {}
-    archive_b64: str = ""
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -148,11 +146,11 @@ class StructureResponse(BaseModel):
                 "content_hash": "c7a1f9e6…",
                 "render_hash": "3b8d40b2…",
                 "axc": '@section [id="s1"]:\n  @heading [level=1]:\n    Introduction\n',
+                "axc_ai": "<!-- AXON DOCUMENT — MACHINE-NATIVE … -->\n@section …",
                 "nodes": 142,
                 "warnings": ["@figure missing alt-text (id=fig-3)"],
                 "html": "<article>…rendered HTML…</article>",
                 "tree": {"type": "document", "children": []},
-                "archive_b64": "UEsDBBQAAAAIAA…",
             }
         }
     )
@@ -307,25 +305,21 @@ def _count_nodes(node) -> int:
 
 def _build_rich_response(doc) -> StructureResponse:
     """Common path for /v1/structure and /v1/try-public — packs the same
-    document into the four artifacts a buyer or agent might want:
+    document into the artifacts a buyer or agent needs:
 
-      - axc        : canonical text serialization (format-author view)
-      - html       : rendered HTML preview (human view)
-      - tree       : pure JSON tree (LLM view — no parser required)
-      - archive_b64: base64 of the deterministic .tdoc ZIP (power-user view)
+      - axc    : canonical text serialization (format-author view)
+      - axc_ai : self-describing AI-native output (preamble + AXC, no base64 images)
+      - html   : rendered HTML preview (human view)
+      - tree   : pure JSON tree (LLM view — no parser required)
 
     Plus the integrity hashes and validator warnings.
     """
-    import base64
-
     axc = serialize_axc(doc.content)
     axc_ai = serialize_for_ai(doc)
     axr = serialize_axr(doc.render)
     content_hash, render_hash = compute_document_hashes(axc, axr)
     html = render_html(doc)
     tree = doc.content.to_dict()
-    archive_bytes = encode_archive_to_bytes(doc)
-    archive_b64 = base64.b64encode(archive_bytes).decode("ascii")
 
     result = validate(doc)
     return StructureResponse(
@@ -338,7 +332,6 @@ def _build_rich_response(doc) -> StructureResponse:
         warnings=result.warnings,
         html=html,
         tree=tree,
-        archive_b64=archive_b64,
     )
 
 
@@ -392,7 +385,7 @@ async def structure(
         else:
             raise HTTPException(
                 status_code=415,
-                detail=f"Unsupported file type: {suffix!r}. Use .pdf / .axc / .txt / .md / .tdoc",
+                detail=f"Unsupported file type: {suffix!r}. Use .pdf, .axc, .txt, or .md.",
             )
     except AxonSecurityError as e:
         raise HTTPException(status_code=400, detail=f"Unsafe input: {e}")
@@ -455,7 +448,7 @@ async def try_public(
         else:
             raise HTTPException(
                 status_code=415,
-                detail=f"Unsupported file type: {suffix!r}. Use .pdf / .axc / .txt / .md / .tdoc",
+                detail=f"Unsupported file type: {suffix!r}. Use .pdf, .axc, .txt, or .md.",
             )
     except AxonSecurityError as e:
         raise HTTPException(status_code=400, detail=f"Unsafe input: {e}")

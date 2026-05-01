@@ -153,14 +153,14 @@ iframe.preview{width:100%;height:78vh;border:0;background:white;display:block}
     <div class="input-card" id="drop-card">
       <p class="input-card__title">Drop a <em>.pdf</em></p>
       <p class="input-card__hint">— or click to choose —</p>
-      <input type="file" id="file-input" accept=".pdf,.axc,.tdoc,application/pdf">
+      <input type="file" id="file-input" accept=".pdf,.axc,.txt,.md,application/pdf,text/plain">
       <button type="button" id="file-btn">Choose file</button>
     </div>
 
     <div class="input-card">
       <p class="input-card__title">Open from <em>URL</em></p>
       <p class="input-card__hint">https or relative path · CORS permitting</p>
-      <input type="url" id="url-input" placeholder="https://example.com/paper.tdoc" autocomplete="off">
+      <input type="url" id="url-input" placeholder="https://example.com/paper.axc" autocomplete="off">
       <button type="button" id="url-btn">Open</button>
     </div>
   </div>
@@ -176,7 +176,7 @@ iframe.preview{width:100%;height:78vh;border:0;background:white;display:block}
     <div class="frame-toolbar">
       <span id="frame-title">Document</span>
       <span>
-        <button type="button" id="download-pdf-btn" class="primary">Download .pdf</button>
+        <button type="button" id="download-pdf-btn" class="primary">Download .axc</button>
         <button type="button" id="print-btn">Print</button>
         <button type="button" id="reload-btn">Reload</button>
       </span>

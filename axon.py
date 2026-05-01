@@ -820,11 +820,41 @@ def encode_archive(doc: AxonDocument, output_path: str) -> str:
     return output_path
 
 
+def _extract_images_from_tree(root: Node) -> List[Tuple[str, bytes, str]]:
+    """Extract base64 images from the tree, returning (path, raw_bytes, ext).
+
+    Mutates the tree in place: replaces data: URIs with archive-relative
+    paths so the .axc doesn't carry base64 blobs.
+    """
+    import base64 as _b64
+
+    extracted: List[Tuple[str, bytes, str]] = []
+    counter = [0]
+
+    def walk(node: Node) -> None:
+        if node.type == "image":
+            src = node.attributes.get("src", "")
+            m = re.match(r"data:image/(\w+);base64,(.+)", src, re.DOTALL)
+            if m:
+                ext = m.group(1)
+                raw = _b64.b64decode(m.group(2))
+                counter[0] += 1
+                arcpath = f"images/img_{counter[0]:04d}.{ext}"
+                node.attributes["src"] = arcpath
+                extracted.append((arcpath, raw, ext))
+        for c in node.children:
+            walk(c)
+
+    walk(root)
+    return extracted
+
+
 def _encode_archive_impl(doc: AxonDocument) -> bytes:
+    img_entries = _extract_images_from_tree(doc.content)
+
     content_axc = serialize_axc(doc.content)
     render_axr = serialize_axr(doc.render)
 
-    # Compute hashes (deterministic function of content/render bytes).
     ch, rh = compute_document_hashes(content_axc, render_axr)
     doc.manifest.content_hash = ch
     doc.manifest.render_hash = rh
@@ -839,7 +869,6 @@ def _encode_archive_impl(doc: AxonDocument) -> bytes:
 
     signature = sign_document(content_axc, render_axr, manifest_dict)
 
-    # Collect all (arcname, bytes) pairs first so we can sort before writing.
     entries: List[Tuple[str, bytes]] = []
 
     def add_text(arcname: str, text: str) -> None:
@@ -851,6 +880,9 @@ def _encode_archive_impl(doc: AxonDocument) -> bytes:
     add_json("manifest.json", manifest_dict)
     add_text("content/document.axc", content_axc)
     add_text("render/default.axr", render_axr)
+
+    for arcpath, raw_bytes, _ext in img_entries:
+        entries.append((arcpath, raw_bytes))
     add_json("metadata/core.json", metadata)
     add_json("metadata/provenance.json", provenance)
     add_json("metadata/accessibility.json", accessibility)
@@ -1999,12 +2031,12 @@ def convert_pdf(
 ) -> AxonDocument:
     """Convert a PDF to an AxonDocument — AI-native full extraction.
 
-    Extracts every text block, image, and table from the PDF. Output is
-    optimised for machine consumption: images are base64-encoded inline,
-    tables are structured @table/@row/@cell trees, and heading detection
-    uses relative font-size comparison (not fragile absolute thresholds).
+    Extracts every text block, table, and image metadata from the PDF.
+    Images are recorded as structural descriptions (dimensions, format,
+    page) — not base64-encoded — because LLMs cannot render base64 and
+    it wastes tokens. Tables are structured @table/@row/@cell trees.
+    Heading detection uses relative font-size comparison.
     """
-    import base64
     import statistics
 
     fitz = _try_import_fitz()
@@ -2140,7 +2172,10 @@ def convert_pdf(
                 tbl_node.children.append(row_node)
             current_section.children.append(tbl_node)
 
-        # ─ Extract embedded raster images ─
+        # ─ Record embedded raster images as structural descriptions ─
+        # Base64-embedding images is catastrophic for AI consumption: LLMs
+        # cannot render base64, and a single figure can waste 500KB+ of
+        # tokens. Instead we record dimensions and format as metadata.
         for img_info in page.get_images(full=True):
             xref = img_info[0]
             try:
@@ -2149,25 +2184,22 @@ def convert_pdf(
                 continue
             if not img_data or not img_data.get("image"):
                 continue
+            w = img_data.get("width", 0)
+            h = img_data.get("height", 0)
+            if w < 50 or h < 50:
+                continue
             image_counter += 1
             ext = img_data.get("ext", "png")
-            b64 = base64.b64encode(img_data["image"]).decode("ascii")
             fig = Node(
                 type="figure",
                 attributes={
                     "id": f"fig-{image_counter}",
                     "page": str(page_num + 1),
+                    "width": str(w),
+                    "height": str(h),
+                    "format": ext,
                 },
-            )
-            fig.children.append(
-                Node(
-                    type="image",
-                    attributes={
-                        "src": f"data:image/{ext};base64,{b64}",
-                        "width": str(img_data.get("width", 0)),
-                        "height": str(img_data.get("height", 0)),
-                    },
-                )
+                text=f"[Figure {image_counter}: {w}x{h} {ext}, page {page_num + 1}]",
             )
             flush_para()
             current_section.children.append(fig)
@@ -2477,6 +2509,19 @@ def _compact_node(node: Node, lines: List[str], depth: int) -> None:
         return
     if t == "cell":
         return
+    if t == "figure":
+        for c in node.children:
+            if c.type == "image":
+                w = c.attributes.get("width", "?")
+                h = c.attributes.get("height", "?")
+                lines.append(f"[figure: {w}x{h}]")
+                break
+        return
+    if t == "image":
+        w = node.attributes.get("width", "?")
+        h = node.attributes.get("height", "?")
+        lines.append(f"[image: {w}x{h}]")
+        return
     text = node.text_content().strip()
     if text:
         lines.append(text)
@@ -2617,16 +2662,39 @@ def generate_ai_preamble(doc: AxonDocument) -> str:
     return "\n".join(lines)
 
 
+def _strip_base64_for_ai(node: Node) -> Node:
+    """Deep-copy a node tree, replacing base64 image data with text placeholders."""
+
+    new = Node(type=node.type, attributes=dict(node.attributes))
+    new.text = node.text
+
+    if node.type == "image":
+        src = node.attributes.get("src", "")
+        if src.startswith("data:"):
+            w = node.attributes.get("width", "?")
+            h = node.attributes.get("height", "?")
+            ext_match = re.match(r"data:image/(\w+)", src)
+            ext = ext_match.group(1) if ext_match else "unknown"
+            new.attributes = {k: v for k, v in node.attributes.items() if k != "src"}
+            new.text = f"[image: {w}x{h} {ext}]"
+            return new
+
+    for child in node.children:
+        new.children.append(_strip_base64_for_ai(child))
+    return new
+
+
 def serialize_for_ai(doc: AxonDocument) -> str:
     """Serialize an AxonDocument for AI consumption: preamble + content.
 
     The output starts with a machine-readable preamble that tells any AI
     model what this document is, what's inside it, and how to query it.
-    Then the full AXC content follows. Any AI model reading this output
-    will immediately understand the format and available operations.
+    Then the full AXC content follows. Base64 image data is replaced with
+    text placeholders — LLMs cannot render base64 and it wastes tokens.
     """
     preamble = generate_ai_preamble(doc)
-    axc = serialize_axc(doc.content)
+    clean_content = _strip_base64_for_ai(doc.content)
+    axc = serialize_axc(clean_content)
     return preamble + "\n\n" + axc
 
 

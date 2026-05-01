@@ -121,13 +121,6 @@
     if (btn) btn.addEventListener("click", () => setTab(t));
   });
 
-  // ─── base64 → Uint8Array (for .tdoc download) ────────────────
-  function b64ToBytes(b64) {
-    const bin = atob(b64);
-    const out = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-    return out;
-  }
 
   // ─── Upload + render ─────────────────────────────────────────
   let busy = false;
@@ -268,21 +261,20 @@
     }
   });
 
-  // Download tdoc archive (.tdoc ZIP). The PDF-as-container path was
-  // removed; the archive_b64 field carries the deterministic ZIP instead.
-  on("download-pdf-btn", () => {
-    if (!lastData || !lastData.archive_b64) {
-      setStatus("no archive on this response — try again", "error");
+  on("download-btn", () => {
+    if (!lastData) return;
+    const text = lastData.axc_ai || lastData.axc || "";
+    if (!text) {
+      setStatus("nothing to download", "error");
       return;
     }
-    track("try_downloaded", { format: "tdoc" });
-    const bytes = b64ToBytes(lastData.archive_b64);
-    const blob = new Blob([bytes], { type: "application/octet-stream" });
+    track("try_downloaded", { format: "axc" });
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download =
-      (lastSourceName.replace(/\.[^.]+$/, "") || "document") + ".tdoc";
+      (lastSourceName.replace(/\.[^.]+$/, "") || "document") + ".axc";
     document.body.appendChild(a);
     a.click();
     a.remove();

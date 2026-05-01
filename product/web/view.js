@@ -133,9 +133,9 @@
   function acceptFile(f) {
     if (busy || !f) return;
     const lname = (f.name || "").toLowerCase();
-    if (!/\.(tdoc|axc|pdf|txt|md)$/.test(lname)) {
+    if (!/\.(axc|pdf|txt|md)$/.test(lname)) {
       setStatus(
-        "Unsupported file type — use .tdoc (preferred), .pdf, .axc, .txt, or .md.",
+        "Unsupported file type — use .axc, .pdf, .txt, or .md.",
         "error"
       );
       return;
@@ -191,8 +191,8 @@
       }
       const blob = await r.blob();
       // Infer the file name from the URL path; fall back to "remote.tdoc".
-      const tail = url.pathname.split("/").filter(Boolean).pop() || "remote.tdoc";
-      const name = /\.(tdoc|axc|pdf|txt|md)$/i.test(tail) ? tail : tail + ".tdoc";
+      const tail = url.pathname.split("/").filter(Boolean).pop() || "remote.axc";
+      const name = /\.(axc|pdf|txt|md)$/i.test(tail) ? tail : tail + ".axc";
       acceptFile(new File([blob], name, { type: blob.type || "application/zip" }));
     } catch (err) {
       setStatus(
@@ -269,28 +269,29 @@
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 
-  // Download tdoc archive (.tdoc ZIP). PDF-as-container path removed.
-  function downloadPdf() {
-    if (!lastData || !lastData.archive_b64) {
+  function downloadAxc() {
+    if (!lastData) {
       setStatus("nothing to download yet — open a document first", "error");
       return;
     }
-    const bin = atob(lastData.archive_b64);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    const blob = new Blob([bytes], { type: "application/octet-stream" });
+    const text = lastData.axc_ai || lastData.axc || "";
+    if (!text) {
+      setStatus("nothing to download", "error");
+      return;
+    }
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download =
-      (lastSourceName.replace(/\.[^.]+$/, "") || "document") + ".tdoc";
+      (lastSourceName.replace(/\.[^.]+$/, "") || "document") + ".axc";
     document.body.appendChild(a);
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
-  $("download-pdf-btn").addEventListener("click", () => { track("view_downloaded", { format: "pdf" }); downloadPdf(); });
+  $("download-pdf-btn").addEventListener("click", () => { track("view_downloaded", { format: "axc" }); downloadAxc(); });
   $("print-btn").addEventListener("click", () => { track("view_printed"); printDocument(); });
   $("reload-btn").addEventListener("click", () => {
     if (lastData) render(lastData, lastSourceName);
