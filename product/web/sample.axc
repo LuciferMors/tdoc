@@ -1,86 +1,109 @@
-@view [type=linear]:
-@view [type=graph]:
-@view [type=summary]:
+@document [id="phase-coherence-2026" type="article.research"]:
+
+@section [id="knowledge" type="knowledge-graph"]:
+
+  @data [id="entity-cpc" data-type="entity" class="method"]:
+    Cross-frequency Phase Coherence (CPC)
+
+  @data [id="entity-cgm" data-type="entity" class="instrument"]:
+    Continuous Glucose Monitor (CGM)
+
+  @data [id="entity-ecg" data-type="entity" class="instrument"]:
+    Electrocardiogram (ECG)
+
+  @data [id="rel-1" data-type="relationship" from="entity-cpc" to="entity-cgm" relation="measures"]:
+    CPC quantifies temporal coupling between CGM glucose and cardiac signals
+
+  @data [id="rel-2" data-type="relationship" from="entity-cpc" to="entity-ecg" relation="measures"]:
+    CPC captures autonomic-glycemic phase locking from ECG-derived HRV
+
+  @data [id="claim-1" data-type="claim" evidence="result-main" status="supported"]:
+    Cross-frequency phase coherence distinguishes severe dysglycemia from euglycemia at a population level
+
+  @data [id="claim-2" data-type="claim" evidence="result-survival" status="supported"]:
+    CPC correlates with a 39% reduction in cardiovascular hazard at 12-month follow-up
+
+  @data [id="result-main" data-type="metric" method="mann-whitney" metric="phase-coherence" value="0.349" unit="severe-group" dataset="d1namo"]:
+    0.349 (severe) vs 0.250 (normal), p = 0.005, r = 0.43
+
+  @data [id="result-survival" data-type="metric" method="log-rank" metric="hazard-ratio" value="0.61" unit="HR" dataset="validation-cohort"]:
+    Treated 987 days vs control 841 days, HR = 0.61, p = 0.001
+
+  @data [id="result-n" data-type="metric" metric="sample-size" value="412" unit="participants"]:
+    214 severe, 198 normal
+
+  @data [id="hardware" data-type="constraint" value="wearable-grade" context="clinical-deployment"]:
+    90-second screen using wearable ECG patch and 1 hour CGM window
 
 @section [id="abstract"]:
   @heading [level=1]:
     Phase coherence as a marker of dysglycemia in type-2 diabetes
   @paragraph:
-    Across [data-type="numeric"]n=412[/data-type] adults
-    ([data-type="numeric"]214[/data-type] severe, [data-type="numeric"]198[/data-type] normal),
-    cross-frequency phase coherence between continuous-glucose and ECG signals
-    distinguished severe dysglycemia from euglycemia
-    (p [data-type="pvalue"]= 0.005[/data-type], Mann-Whitney; effect size
-    [data-type="numeric"]r = 0.43[/data-type]).
-
-@narrative [role=motivation]:
-  Standard glycemic markers (HbA1c, fasting glucose) collapse the dysglycemic
-  spectrum to a single number per visit. Phase coherence between glucose and
-  cardiac autonomic signals captures the temporal coupling that is lost first
-  and recovered last in disease.
-
-@hypothesis [id=H1 status=supported]:
-  Subjects with severe dysglycemia exhibit elevated cross-frequency phase
-  coherence between glucose and HRV bands compared with euglycemic controls.
-
-@hypothesis [id=H2 status=inconclusive]:
-  Coherence rises monotonically with HbA1c within a single subject across
-  weeks of CGM follow-up.
+    Across 412 adults (214 severe, 198 normal), cross-frequency phase
+    coherence between continuous-glucose and ECG signals distinguished
+    severe dysglycemia from euglycemia (p = 0.005, Mann-Whitney;
+    effect size r = 0.43).
 
 @section [id="results"]:
   @heading [level=2]:
     Results
-
-  @result [id=R1 metric=phase_coherence method=mann_whitney
-           severe=0.349 normal=0.250 p_value=0.005 effect_size_r=0.43]:
-    Cohort-level coherence comparison.
-
-  @result [id=R2 metric=median_lifespan method=log_rank
-           treated_days=987 control_days=841 hazard_ratio=0.61 p_value=0.001]:
-    Survival analysis on the validation cohort.
-
   @paragraph:
-    Body weight at @metric [name=time value=52 unit=weeks]:
-    @metric [name=mass value=28.4 unit=g group=treated]: vs.
-    @metric [name=mass value=34.1 unit=g group=control]:
-    (p [data-type="pvalue"]< 0.001[/data-type]).
+    The primary outcome measure, cross-frequency phase coherence,
+    was significantly elevated in the severe dysglycemia group
+    (0.349 vs 0.250, Mann-Whitney U, p = 0.005). The effect size
+    (r = 0.43) indicates a moderate separation between populations.
+  @paragraph:
+    Survival analysis on the validation cohort showed treated subjects
+    surviving a median of 987 days compared to 841 days in controls
+    (hazard ratio 0.61, log-rank p = 0.001), corresponding to a
+    39% reduction in cardiovascular events at 12-month follow-up.
 
-@finding [id=F1 type=primary significance=0.005 validated=permutation]:
-  Cross-signal phase coherence separates severe from normal cohorts at a
-  population level with a moderate effect size and survives a 10,000-iteration
-  permutation null.
+  @table [id="table-1" summary="Cohort-level phase coherence comparison"]:
+    @thead:
+      @row:
+        @cell [scope=col]:
+          Group
+        @cell [scope=col data-type="number"]:
+          N
+        @cell [scope=col data-type="number"]:
+          Coherence
+        @cell [scope=col data-type="pvalue"]:
+          p-value
+    @tbody:
+      @row:
+        @cell:
+          Severe
+        @cell [data-type="number" data-value="214"]:
+          214
+        @cell [data-type="number" data-value="0.349"]:
+          0.349
+        @cell [data-type="pvalue" data-value="0.005"]:
+          0.005
+      @row:
+        @cell:
+          Normal
+        @cell [data-type="number" data-value="198"]:
+          198
+        @cell [data-type="number" data-value="0.250"]:
+          0.250
+        @cell:
+          —
 
-@finding [id=F2 type=secondary significance=0.001 validated=bootstrap]:
-  The same metric correlates with a 39 % reduction in hazard ratio for
-  cardiovascular events at 12-month follow-up.
+@section [id="discussion"]:
+  @heading [level=2]:
+    Discussion
+  @paragraph:
+    Sustained autonomic tone is a precondition for tightly-coupled
+    glucose-heart phase relationships. Loss of vagal influence under
+    chronic hyperglycemia decouples the two oscillators; coherence
+    falls long before HbA1c crosses any clinical threshold.
+  @paragraph:
+    A 90-second cohort screen using a wearable ECG patch and a single
+    CGM hour could identify pre-diabetic decoupling years earlier than
+    current laboratory criteria without a venous draw.
 
-@link [from=H1 to=R1 type=validated_by]:
-@link [from=H1 to=F1 type=supports]:
-@link [from=R1 to=F1 type=derived_from]:
-@link [from=R2 to=F2 type=derived_from]:
-
-@narrative [role=mechanism_explanation]:
-  Sustained autonomic tone is a precondition for tightly-coupled
-  glucose-heart phase relationships. Loss of vagal influence under chronic
-  hyperglycemia decouples the two oscillators; coherence falls long before
-  HbA1c crosses any clinical threshold.
-
-@narrative [role=clinical_implication]:
-  A 90-second cohort screen using a wearable ECG patch and a single CGM
-  hour could identify pre-diabetic decoupling years earlier than current
-  laboratory criteria — without a venous draw.
-
-@narrative [role=limitation]:
-  This is observational; coherence is associated with severity but
-  causality is not established. The single-cohort validation must be
-  replicated on the MIMIC-IV waveform subset.
-
-@code_ref [repo=github.com/LuciferMors/coherence-pipeline
-           script=analyses/phase_coherence.py
-           commit=a1b2c3d
-           reproducible=true]:
-
-@narrative [role=future_work]:
-  Replication on Shanghai T1/T2DM and HUPA-UCM cohorts; prospective
-  enrolment of 200 pre-diabetic subjects with monthly CGM-ECG follow-up
-  for 24 months.
+  @equation [id="eq-cpc" label="(1)"]:
+    @latex:
+      C_{xy}(f_1, f_2) = \frac{|\langle e^{i(\phi_x(f_1,t) - \phi_y(f_2,t))} \rangle_t|^2}{\langle |\phi_x|^2 \rangle \langle |\phi_y|^2 \rangle}
+    @description:
+      Cross-frequency phase coherence between signals x (glucose) and y (cardiac) at frequencies f1 and f2

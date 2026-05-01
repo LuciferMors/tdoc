@@ -1492,6 +1492,34 @@ class HtmlRenderer:
                         color:var(--ink-3); margin:0.4rem 0; }
             .axon-link__rel{ font-style:italic; color:var(--accent); }
 
+            /* @data — typed knowledge nodes (entity, relationship, claim, metric, constraint) */
+            .axon-data{
+              margin:0.6rem 0; padding:0.3rem 0 0.3rem 1.2rem;
+              border-left:3px solid var(--rule);
+            }
+            .axon-data--entity{ border-left-color:var(--accent); }
+            .axon-data--relationship{ border-left-color:#58c; }
+            .axon-data--claim{ border-left-color:#c80; }
+            .axon-data--metric{ border-left-color:#2a6; }
+            .axon-data--constraint{ border-left-color:var(--ink-3); }
+            .axon-data__badge{
+              display:block; font-family:var(--mono); font-size:0.72rem;
+              letter-spacing:0.08em; text-transform:uppercase;
+              color:var(--ink-3); margin:0 0 0.2rem;
+            }
+            .axon-data--entity .axon-data__badge{ color:var(--accent); }
+            .axon-data--relationship .axon-data__badge{ color:#58c; }
+            .axon-data--claim .axon-data__badge{ color:#c80; }
+            .axon-data--metric .axon-data__badge{ color:#2a6; }
+            .axon-data__body{ color:var(--ink); }
+            .axon-data__attrs{
+              display:flex; flex-wrap:wrap; gap:0.15rem 0.9rem;
+              margin:0.25rem 0 0; font-family:var(--mono); font-size:0.78rem;
+            }
+            .axon-data__key{ color:var(--ink-3); }
+            .axon-data__key::after{ content:": "; }
+            .axon-data__val{ color:var(--ink-2); }
+
             /* @view declarations are metadata, hidden in human render */
             .axon-view{ display:none; }
 
@@ -1813,7 +1841,58 @@ class HtmlRenderer:
         if t in ("latex", "description", "notation_definitions", "caption"):
             return ""  # Rendered as part of parent
         if t == "data":
-            return f'<!-- @data id={node.attributes.get("id", "")} -->'
+            data_type = node.attributes.get("data-type", "")
+            nid = node.attributes.get("id", "")
+            cls = node.attributes.get("class", "")
+
+            badge_parts = [data_type or "data"]
+            if data_type == "entity" and cls:
+                badge_parts.append(cls)
+            elif data_type == "relationship":
+                rel = node.attributes.get("relation", "")
+                if rel:
+                    badge_parts.append(rel)
+            elif data_type == "claim":
+                status = node.attributes.get("status", "")
+                if status:
+                    badge_parts.append(status)
+            elif data_type == "metric":
+                metric_name = node.attributes.get("metric", "")
+                if metric_name:
+                    badge_parts.append(metric_name)
+            badge = " \xb7 ".join(badge_parts)
+
+            skip_keys = {"id", "data-type", "class"}
+            attr_spans = []
+            for k, v in sorted(node.attributes.items()):
+                if k in skip_keys:
+                    continue
+                attr_spans.append(
+                    f'<span><span class="axon-data__key">{_he(k)}</span>'
+                    f'<span class="axon-data__val">{_he(v)}</span></span>'
+                )
+            attrs_html = (
+                '<div class="axon-data__attrs">' + " ".join(attr_spans) + "</div>"
+                if attr_spans
+                else ""
+            )
+
+            inner = self._render_inline(node.text)
+            child_html = "\n".join(self._render_node(c) for c in node.children)
+            body = inner + child_html
+            body_html = (
+                f'<div class="axon-data__body">{body}</div>' if body.strip() else ""
+            )
+
+            id_attr = f' id="{_he(nid)}"' if nid else ""
+
+            return (
+                f'<aside class="axon-data axon-data--{_he(data_type)}"{id_attr}>\n'
+                f'  <header class="axon-data__badge">{_he(badge)}</header>\n'
+                f"  {body_html}\n"
+                f"  {attrs_html}\n"
+                f"</aside>"
+            )
         # Generic fallback: render children
         return "\n".join(self._render_node(c) for c in node.children)
 
