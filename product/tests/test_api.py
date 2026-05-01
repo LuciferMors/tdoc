@@ -211,9 +211,9 @@ def test_structure_response_carries_real_hashes():
     assert body["render_hash"]
 
 
-# ─── Rich-response contract: html + tree + archive_b64 ──────────
+# ─── Rich-response contract: html + tree + axc_ai ─────────────────
 # The /try page reads these; if any is missing or malformed, the
-# Preview tab is blank, the JSON tab is empty, or .tdoc download fails.
+# Preview tab is blank, the JSON tab is empty, or download fails.
 
 
 def test_try_public_returns_html_preview():
@@ -238,51 +238,32 @@ def test_try_public_returns_json_tree():
     assert tree.get("type")  # at minimum a typed root node
 
 
-def test_try_public_returns_downloadable_tdoc_archive():
-    import base64
-    import zipfile
-    import io
-
+def test_try_public_returns_axc_ai():
     axc = b"@paragraph:\n  hello\n"
     files = {"file": ("in.axc", axc, "text/plain")}
     r = client.post("/v1/try-public", files=files)
     assert r.status_code == 200, r.text
     body = r.json()
-    archive_b64 = body["archive_b64"]
-    assert archive_b64, "archive_b64 must be non-empty"
-
-    raw = base64.b64decode(archive_b64)
-    # Must be a real ZIP we can open and that contains the manifest +
-    # content entries the .tdoc layout requires.
-    zf = zipfile.ZipFile(io.BytesIO(raw))
-    names = set(zf.namelist())
-    assert "manifest.json" in names
-    assert "content/document.axc" in names
+    assert "axc_ai" in body
+    assert body["axc_ai"], "axc_ai must be non-empty"
+    assert "AXON DOCUMENT" in body["axc_ai"]
+    assert "archive_b64" not in body
 
 
-def test_try_public_accepts_tdoc_archive_roundtrip():
-    """Upload .axc → get back .tdoc → re-upload .tdoc → see the same content."""
-    import base64
-
+def test_try_public_axc_ai_contains_preamble_and_content():
     axc = (
         b'@section [id="intro"]:\n'
         b"  @heading [level=1]:\n"
-        b"    Hello from a roundtrip\n"
+        b"    Hello from AI output\n"
         b"  @paragraph:\n"
         b"    Some paragraph body.\n"
     )
-    r1 = client.post("/v1/try-public", files={"file": ("in.axc", axc, "text/plain")})
-    assert r1.status_code == 200, r1.text
-    archive_bytes = base64.b64decode(r1.json()["archive_b64"])
-    assert archive_bytes.startswith(b"PK")  # ZIP magic
-
-    # Re-upload as .tdoc and verify the same axc comes back.
-    r2 = client.post(
-        "/v1/try-public",
-        files={"file": ("downloaded.tdoc", archive_bytes, "application/zip")},
-    )
-    assert r2.status_code == 200, r2.text
-    assert "Hello from a roundtrip" in r2.json()["axc"]
+    r = client.post("/v1/try-public", files={"file": ("in.axc", axc, "text/plain")})
+    assert r.status_code == 200, r.text
+    ai = r.json()["axc_ai"]
+    assert "MACHINE-NATIVE" in ai
+    assert "Hello from AI output" in ai
+    assert "HOW TO READ THIS DOCUMENT" in ai
 
 
 def test_try_public_rejects_corrupt_tdoc():
